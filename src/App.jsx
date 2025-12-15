@@ -267,14 +267,14 @@ export default function App() {
             </div>
 
             {/* Stats Panel */}
-            <div className="fixed bottom-4 left-4 bg-base-200 card card-border p-4 w-48">
+            <div className="fixed bottom-4 left-4 bg-base-200 card card-border p-4">
                 <div className="font-semibold">Stats</div>
                 <div>Points: {currency}</div>
                 <div>Points/sec: {pointsPerSecond}</div>
             </div>
 
             {/* Variables Panel */}
-            <div className="fixed bottom-4 right-4 bg-base-200 card card-border p-4 w-48">
+            <div className="fixed bottom-4 right-4 bg-base-200 card card-border p-4">
                 <div className="font-semibold">Variables</div>
                 {Object.entries(variables)
                     .filter(([key, val]) => val !== 0)
