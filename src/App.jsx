@@ -47,22 +47,7 @@ export default function App() {
     const [boughtUpgrades, setBoughtUpgrades] = useState([]);
     const [pointsPerSecond, setPointsPerSecond] = useState(0);
     const [variables, setVariables] = useState({ x: 1, a0: 0, a1: 0, a2: 0 });
-
-    const currentTerms = [];
-    let functionValue = 0;
-
-    if (boughtUpgrades.includes(0)) {
-        currentTerms.push(`${variables.a0}`);
-        functionValue = variables.a0;
-    }
-    if (boughtUpgrades.includes(1)) {
-        currentTerms.push(`${variables.a1}x`);
-        functionValue = variables.a1 * variables.x + variables.a0;
-    }
-    if (boughtUpgrades.includes(2)) {
-        currentTerms.push(`${variables.a2}x²`);
-        functionValue = variables.a2 * variables.x ** 2 + variables.a1 * variables.x + variables.a0;
-    }
+    const functionValue = variables.a2 * variables.x ** 2 + variables.a1 * variables.x + variables.a0;
 
     useEffect(() => {
         setPointsPerSecond(functionValue);
