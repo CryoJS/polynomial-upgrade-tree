@@ -413,7 +413,7 @@ export default function App() {
                         transition={{ type: "spring", stiffness: 400, damping: 30, mass: 0.5 }}
                     >
                         <div
-                            className={`px-4 py-2 border rounded text-center min-w-[260px] bg-base-200 backdrop-blur-sm ${
+                            className={`px-4 py-2 border rounded text-center min-w-[260px] bg-base-100 backdrop-blur-sm ${
                                 notification.type === "success"
                                     ? "text-success"
                                     : "text-error"
