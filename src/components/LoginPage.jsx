@@ -4,33 +4,61 @@ import { motion } from "framer-motion";
 
 export default function LoginPage({ onLogin }) {
     const [name, setName] = useState("");
+    const [password, setPassword] = useState("");
     const [error, setError] = useState("");
 
     const handleSubmit = () => {
         const trimmedName = name.trim();
 
         if (!trimmedName) {
-            setError("Please enter a name");
+            setError("Please enter a username");
             return;
         }
 
         if (trimmedName.length < 2) {
-            setError("Name must be at least 2 characters");
+            setError("Username must be at least 2 characters");
             return;
         }
 
         if (trimmedName.length > 20) {
-            setError("Name must be less than 20 characters");
+            setError("Username must be less than 20 characters");
             return;
         }
 
-        onLogin(trimmedName);
+        // Admin account
+        if (trimmedName === "Admin") {
+            if (password !== "Vast72") {
+                setError("Incorrect password for Admin");
+                return;
+            }
+            onLogin("Admin", true);
+            return;
+        }
+
+        // Load users from localStorage
+        const users = JSON.parse(localStorage.getItem("polynomialUT_users") || "{}");
+
+        if (users[trimmedName]) {
+            // Existing user — check password
+            if (users[trimmedName].password !== password) {
+                setError("Incorrect password");
+                return;
+            }
+            onLogin(trimmedName, false);
+        } else {
+            // New user — save password
+            if (!password) {
+                setError("Please enter a password for new account");
+                return;
+            }
+            users[trimmedName] = { password };
+            localStorage.setItem("polynomialUT_users", JSON.stringify(users));
+            onLogin(trimmedName, false);
+        }
     };
 
     const handleKeyDown = (e) => {
-        if (e.key === "Enter") {
-            handleSubmit();
-        }
+        if (e.key === "Enter") handleSubmit();
     };
 
     return (
@@ -51,25 +79,33 @@ export default function LoginPage({ onLogin }) {
                 </div>
 
                 <div className="space-y-4">
-                    <div>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => {
-                                setName(e.target.value);
-                                setError("");
-                            }}
-                            onKeyDown={handleKeyDown}
-                            className="input input-bordered w-full"
-                            placeholder="Team name"
-                            autoFocus
-                        />
-                        {error && (
-                            <label className="label">
-                                <span className="label-text-alt text-error">{error}</span>
-                            </label>
-                        )}
-                    </div>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => {
+                            setName(e.target.value);
+                            setError("");
+                        }}
+                        onKeyDown={handleKeyDown}
+                        className="input input-bordered w-full"
+                        placeholder="Username"
+                        autoFocus
+                    />
+
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="input input-bordered w-full"
+                        placeholder="Password"
+                    />
+
+                    {error && (
+                        <label className="label">
+                            <span className="label-text-alt text-error">{error}</span>
+                        </label>
+                    )}
 
                     <button onClick={handleSubmit} className="btn btn-primary w-full">
                         Start Playing
