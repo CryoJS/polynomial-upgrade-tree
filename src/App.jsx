@@ -422,7 +422,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             );
 
             rows.push(
-                <div className="flex justify-center gap-6" key={upg.rowGroup}>
+                <div className="flex flex-wrap justify-center gap-4 sm:gap-6" key={upg.rowGroup}>
                     {group.map(u => (
                         <UpgradeBtn
                             key={u.id}
@@ -457,15 +457,23 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     return (
         <div className="min-h-screen bg-base-100 text-base-content">
             {/* Navbar */}
-            <div className="sticky top-0 z-50 navbar bg-base-200 px-3 sm:px-5 py-2 shadow-md flex items-center min-h-0">
+            <div className="sticky top-0 z-50 navbar bg-base-200 px-2 sm:px-4 py-2 shadow-md flex items-center min-h-0">
                 {/* Title - Shows only icon on mobile */}
                 <div className="flex items-center gap-2 text-xl font-bold text-primary">
                     <BsCaretUpSquare className="text-2xl" />
                     <span className="hidden sm:inline">Polynomial<span className="text-base">UT</span></span>
+
+                    {/* Username Display */}
+                    <div className="badge badge-primary font-semibold hidden sm:inline-flex ml-2">
+                        {playerName}
+                    </div>
+                    <div className="badge badge-primary font-semibold sm:hidden">
+                        {playerName.length > 8 ? playerName.substring(0, 8) + "..." : playerName}
+                    </div>
                 </div>
 
                 {/* Function Display - Responsive */}
-                <div className="absolute left-1/2 transform -translate-x-1/2 top-14 sm:top-2 text-sm sm:text-lg font-semibold text-base-100 bg-primary px-2 py-0.5 rounded max-w-[90vw] overflow-hidden">
+                <div className="absolute left-1/2 transform -translate-x-1/2 top-12 sm:top-2 text-sm sm:text-lg font-semibold text-base-100 bg-primary px-2 py-0.5 rounded max-w-[90vw]">
                     <div className="truncate">
                         f(x) = {(() => {
                         const terms = Object.entries(variables)
@@ -482,16 +490,8 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     </div>
                 </div>
 
-                {/* Player Info & Actions */}
+                {/* Actions */}
                 <div className="ml-auto flex items-center gap-1 sm:gap-2">
-                    {/* Username Display */}
-                    <div className="badge badge-primary font-semibold hidden xs:inline-flex">
-                        {playerName}
-                    </div>
-                    <div className="badge badge-primary font-semibold xs:hidden">
-                        {playerName}
-                    </div>
-
                     {/* Admin Controls */}
                     {isAdmin && (
                         <button
@@ -504,26 +504,8 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                         </button>
                     )}
 
-                    {/* Leaderboard Panel Open */}
-                    <button
-                        onClick={() => setShowLeaderboard(true)}
-                        className="btn btn-xs sm:btn-sm btn-ghost px-[.5em]"
-                        title="View Leaderboard"
-                    >
-                        <BsTrophy className="text-base sm:text-lg" />
-                    </button>
-
-                    {/* Log Out */}
-                    <button
-                        onClick={onLogout}
-                        className="btn btn-xs sm:btn-sm btn-ghost px-[.5em]"
-                        title="Logout"
-                    >
-                        <BsBoxArrowRight className="text-base sm:text-lg" />
-                    </button>
-
                     {/* Theme Toggle */}
-                    <label className="toggle toggle-sm sm:toggle-md text-base-content ml-1">
+                    <label className="toggle toggle-sm sm:toggle-md text-base-content ml-2">
                         <input type="checkbox" value="dark" className="theme-controller"/>
                         <svg aria-label="sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="2" fill="none" stroke="currentColor">
@@ -544,6 +526,24 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                             </g>
                         </svg>
                     </label>
+
+                    {/* Leaderboard Panel Btn */}
+                    <button
+                        onClick={() => setShowLeaderboard(true)}
+                        className="btn btn-xs sm:btn-sm btn-ghost px-[0.7em]"
+                        title="View Leaderboard"
+                    >
+                        <BsTrophy className="text-base sm:text-lg" />
+                    </button>
+
+                    {/* Log Out */}
+                    <button
+                        onClick={onLogout}
+                        className="btn btn-xs sm:btn-sm btn-ghost px-[0.7em]"
+                        title="Logout"
+                    >
+                        <BsBoxArrowRight className="text-base sm:text-lg" />
+                    </button>
                 </div>
             </div>
 
@@ -552,8 +552,8 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 {rows}
             </div>
 
-            {/* Stats Panel */}
-            <div className="fixed bottom-2 left-2 sm:bottom-4 sm:left-4 w-40 sm:w-56 z-40">
+            {/* Stats Panel - Mobile: bottom left, Desktop: bottom left */}
+            <div className="fixed bottom-2 left-2 sm:bottom-4 sm:left-4 w-36 sm:w-56 z-40">
                 <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
                     <input type="checkbox" defaultChecked />
 
@@ -568,8 +568,8 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
-            {/* Variables Panel */}
-            <div className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 w-40 sm:w-56 z-40">
+            {/* Variables Panel - Mobile: bottom right, Desktop: bottom right */}
+            <div className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 w-36 sm:w-56 z-40">
                 <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
                     <input type="checkbox" defaultChecked />
 

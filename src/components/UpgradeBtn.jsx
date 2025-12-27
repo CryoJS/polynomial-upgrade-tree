@@ -50,7 +50,7 @@ export default function UpgradeBtn({id, title, description, cost, prereqs, bough
             layout
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`relative card w-96 bg-base-200 border-2 ${
+            className={`relative card w-50 sm:w-60 md:w-85 bg-base-200 border-2 ${
                 isBought
                     ? "border-primary"
                     : canBuy
