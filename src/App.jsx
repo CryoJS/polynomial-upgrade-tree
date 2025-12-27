@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { BsCaretUpSquare } from "react-icons/bs";
 import { motion, AnimatePresence } from "framer-motion";
 
-import UpgradeBtn from "./UpgradeBtn";
-import UpgradePopup from "./UpgradePopup";
-import AnswerReviewPopup from "./AnswerReviewPopup";
+import UpgradeBtn from "./components/UpgradeBtn.jsx";
+import UpgradePopup from "./components/UpgradePopup.jsx";
+import AnswerReviewPopup from "./components/AnswerReviewPopup.jsx";
 import { questionData } from "./questionData";
 
 export default function App() {

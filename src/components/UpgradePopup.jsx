@@ -51,6 +51,13 @@ export default function UpgradePopup({ popup, onSuccess, onClose, deductMoney, u
         Thinking: "text-purple-500",
     };
 
+    const categoryColorsBorders = {
+        Knowledge: "border-green-500",
+        Application: "border-red-500",
+        Communication: "border-blue-500",
+        Thinking: "border-purple-500",
+    };
+
     function handleSubmit() {
         if (selected == null) return;
 
@@ -70,7 +77,7 @@ export default function UpgradePopup({ popup, onSuccess, onClose, deductMoney, u
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-base-100 rounded-lg p-6 max-w-2xl w-full shadow-lg border-2 border-primary"
+                className={`bg-base-100 rounded-lg p-6 max-w-2xl w-full shadow-lg border-2 ${categoryColorsBorders[popup.category]}`}
             >
                 <div className="mb-4">
                     {popup.category && (
