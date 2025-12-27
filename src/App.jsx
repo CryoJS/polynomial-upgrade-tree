@@ -457,15 +457,17 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     return (
         <div className="min-h-screen bg-base-100 text-base-content">
             {/* Navbar */}
-            <div className="sticky top-0 z-50 navbar bg-base-200 px-5 py-2 shadow-md flex items-center min-h-0">
+            <div className="sticky top-0 z-50 navbar bg-base-200 px-3 sm:px-5 py-2 shadow-md flex items-center min-h-0">
+                {/* Title - Shows only icon on mobile */}
                 <div className="flex items-center gap-2 text-xl font-bold text-primary">
-                    <BsCaretUpSquare/>
-                    Polynomial<span className="text-base">UT</span>
+                    <BsCaretUpSquare className="text-2xl" />
+                    <span className="hidden sm:inline">Polynomial<span className="text-base">UT</span></span>
                 </div>
 
-                <div className="absolute left-1/2 transform -translate-x-1/2 top-14 sm:top-2 text-lg font-semibold text-base-100 bg-primary px-2 py-0 rounded">
-                    f(x) = {
-                    (() => {
+                {/* Function Display - Responsive */}
+                <div className="absolute left-1/2 transform -translate-x-1/2 top-14 sm:top-2 text-sm sm:text-lg font-semibold text-base-100 bg-primary px-2 py-0.5 rounded max-w-[90vw] overflow-hidden">
+                    <div className="truncate">
+                        f(x) = {(() => {
                         const terms = Object.entries(variables)
                             .filter(([key, val]) => key.startsWith("a") && val !== 0)
                             .sort((a, b) => parseInt(b[0].slice(1)) - parseInt(a[0].slice(1)))
@@ -476,40 +478,52 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                                 return <span key={key}>{coeff}x{degree > 1 && <sup>{degree}</sup>}</span>;
                             });
                         return terms.length > 0 ? terms.reduce((prev, curr) => [prev, " + ", curr]) : "0";
-                    })()
-                }
+                    })()}
+                    </div>
                 </div>
 
-                <div className="ml-auto flex items-center gap-2">
-                    <div className="badge badge-primary font-semibold">{playerName}</div>
+                {/* Player Info & Actions */}
+                <div className="ml-auto flex items-center gap-1 sm:gap-2">
+                    {/* Username Display */}
+                    <div className="badge badge-primary font-semibold hidden xs:inline-flex">
+                        {playerName}
+                    </div>
+                    <div className="badge badge-primary font-semibold xs:hidden">
+                        {playerName}
+                    </div>
 
+                    {/* Admin Controls */}
                     {isAdmin && (
                         <button
                             onClick={resetLeaderboard}
-                            className="btn btn-sm btn-error ml-2"
+                            className="btn btn-xs sm:btn-sm btn-error ml-1 sm:ml-2"
                             title="Reset Leaderboard"
                         >
-                            Reset Leaderboard
+                            <span className="hidden sm:inline">Reset</span>
+                            <span className="sm:hidden">🗑️</span>
                         </button>
                     )}
 
+                    {/* Leaderboard Panel Open */}
                     <button
                         onClick={() => setShowLeaderboard(true)}
-                        className="btn btn-sm btn-ghost"
+                        className="btn btn-xs sm:btn-sm btn-ghost px-[.5em]"
                         title="View Leaderboard"
                     >
-                        <BsTrophy className="text-lg" />
+                        <BsTrophy className="text-base sm:text-lg" />
                     </button>
 
+                    {/* Log Out */}
                     <button
                         onClick={onLogout}
-                        className="btn btn-sm btn-ghost"
+                        className="btn btn-xs sm:btn-sm btn-ghost px-[.5em]"
                         title="Logout"
                     >
-                        <BsBoxArrowRight className="text-lg" />
+                        <BsBoxArrowRight className="text-base sm:text-lg" />
                     </button>
 
-                    <label className="toggle text-base-content">
+                    {/* Theme Toggle */}
+                    <label className="toggle toggle-sm sm:toggle-md text-base-content ml-1">
                         <input type="checkbox" value="dark" className="theme-controller"/>
                         <svg aria-label="sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="2" fill="none" stroke="currentColor">
@@ -533,30 +547,37 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
-            <div className="my-30 p-6 flex flex-col gap-6">
+            {/* Upgrade Tree */}
+            <div className="my-20 sm:my-30 p-4 sm:p-6 flex flex-col gap-4 sm:gap-6">
                 {rows}
             </div>
 
-            <div className="fixed bottom-4 left-4 w-56 z-40">
+            {/* Stats Panel */}
+            <div className="fixed bottom-2 left-2 sm:bottom-4 sm:left-4 w-40 sm:w-56 z-40">
                 <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
                     <input type="checkbox" defaultChecked />
-                    <div className="collapse-title font-semibold text-sm">
+
+                    <div className="collapse-title font-semibold text-xs sm:text-sm">
                         Stats
                     </div>
-                    <div className="collapse-content text-sm">
+
+                    <div className="collapse-content text-xs sm:text-sm">
                         <div>Points: {Math.floor(currency)}</div>
-                        <div>Points/sec: f(x) = {functionValue}</div>
+                        <div>Points/sec: {functionValue}</div>
                     </div>
                 </div>
             </div>
 
-            <div className="fixed bottom-4 right-4 w-56 z-40">
+            {/* Variables Panel */}
+            <div className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 w-40 sm:w-56 z-40">
                 <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
                     <input type="checkbox" defaultChecked />
-                    <div className="collapse-title font-semibold text-sm">
+
+                    <div className="collapse-title font-semibold text-xs sm:text-sm">
                         Variables
                     </div>
-                    <div className="collapse-content text-sm">
+
+                    <div className="collapse-content text-xs sm:text-sm">
                         {Object.entries(variables)
                             .filter(([_, val]) => val !== 0)
                             .map(([key, val]) => (
@@ -568,6 +589,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
+            {/* Popups */}
             <UpgradePopup
                 popup={activePopup}
                 upgradeCost={pendingUpgrade?.cost}
@@ -579,7 +601,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 }}
                 showNotification={showNotification}
             />
-
             <AnimatePresence>
                 {reviewPopup && (
                     <AnswerReviewPopup
@@ -588,17 +609,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     />
                 )}
             </AnimatePresence>
-
-            <AnimatePresence>
-                {showLeaderboard && (
-                    <Leaderboard
-                        currentPlayer={playerName}
-                        show={showLeaderboard}
-                        onClose={() => setShowLeaderboard(false)}
-                    />
-                )}
-            </AnimatePresence>
-
             <AnimatePresence>
                 {notification && (
                     <motion.div
@@ -620,7 +630,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     </motion.div>
                 )}
             </AnimatePresence>
-
             {confirmDialog && (
                 <ConfirmDialog
                     isOpen={true}
@@ -629,6 +638,17 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     onCancel={confirmDialog.onCancel}
                 />
             )}
+
+            {/* Leaderboard */}
+            <AnimatePresence>
+                {showLeaderboard && (
+                    <Leaderboard
+                        currentPlayer={playerName}
+                        show={showLeaderboard}
+                        onClose={() => setShowLeaderboard(false)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }

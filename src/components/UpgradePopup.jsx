@@ -72,61 +72,65 @@ export default function UpgradePopup({ popup, onSuccess, onClose, deductMoney, u
     }
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-2 sm:p-4">
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className={`bg-base-100 rounded-lg p-6 max-w-2xl w-full shadow-lg border-2 ${categoryColorsBorders[popup.category]}`}
+                className={`bg-base-100 rounded-lg p-4 sm:p-6 shadow-lg border-2 ${categoryColorsBorders[popup.category]} w-full max-w-2xl max-h-[85vh] flex flex-col`}
             >
-                <div className="mb-4">
-                    {popup.category && (
-                        <small className={`font-semibold ${categoryColors[popup.category]} mr-2 uppercase`}>
-                            {popup.category}
-                        </small>
+                {/* Scrollable Content Area */}
+                <div className="flex-grow overflow-y-auto pr-2">
+                    <div className="mb-4">
+                        {popup.category && (
+                            <small className={`font-semibold ${categoryColors[popup.category]} mr-2 uppercase`}>
+                                {popup.category}
+                            </small>
+                        )}
+                        <h2 className="text-lg font-bold">
+                            <MathText text={popup.question} />
+                        </h2>
+                    </div>
+
+                    {isMC && (
+                        <div className="flex flex-col gap-2">
+                            {popup.options.map((opt, i) => {
+                                const isSelected = selected === i;
+                                return (
+                                    <button
+                                        key={i}
+                                        className={`text-left px-3 py-2 rounded border ${
+                                            isSelected
+                                                ? "border-primary bg-primary/20"
+                                                : "border-gray-300"
+                                        }`}
+                                        onClick={() => setSelected(i)}
+                                    >
+                                        <MathText text={opt} />
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
-                    <h2 className="text-lg font-bold">
-                        <MathText text={popup.question} />
-                    </h2>
+
+                    {!isMC && (
+                        <input
+                            type="text"
+                            value={selected || ""}
+                            onChange={e => setSelected(e.target.value)}
+                            className="input input-bordered w-full mb-4"
+                            placeholder="Ask a judge to review your solution, to receive a passcode."
+                        />
+                    )}
                 </div>
 
-                {isMC && (
-                    <div className="flex flex-col gap-2">
-                        {popup.options.map((opt, i) => {
-                            const isSelected = selected === i;
-                            return (
-                                <button
-                                    key={i}
-                                    className={`text-left px-3 py-2 rounded border ${
-                                        isSelected
-                                            ? "border-primary bg-primary/20"
-                                            : "border-gray-300"
-                                    }`}
-                                    onClick={() => setSelected(i)}
-                                >
-                                    <MathText text={opt} />
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {!isMC && (
-                    <input
-                        type="text"
-                        value={selected || ""}
-                        onChange={e => setSelected(e.target.value)}
-                        className="input input-bordered w-full mb-4"
-                        placeholder="Ask a judge to review your solution, to recieve a passcode."
-                    />
-                )}
-
-                <div className="flex justify-end gap-2 mt-4">
-                    <button className="btn btn-secondary" onClick={onClose}>
+                {/* Fixed Footer */}
+                <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                    <button className="btn btn-secondary btn-sm sm:btn-md" onClick={onClose}>
                         Cancel
                     </button>
                     <button
-                        className="btn btn-primary"
+                        className="btn btn-primary btn-sm sm:btn-md"
                         onClick={handleSubmit}
                         disabled={selected == null}
                     >
