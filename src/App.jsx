@@ -23,12 +23,14 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     const [reviewPopup, setReviewPopup] = useState(null);
     const [confirmDialog, setConfirmDialog] = useState(null);
 
-    const functionValue =
-        variables.a2 * variables.x ** 2 +
-        variables.a1 * variables.x +
-        variables.a0;
+    // Calculate function value
+    const calculateFunctionValue = (vars = variables) => {
+        return vars.a2 * vars.x ** 2 + vars.a1 * vars.x + vars.a0;
+    };
 
-    // FIXED: Save player data function with proper data structure
+    const functionValue = calculateFunctionValue();
+
+    // Save player data function - FIXED with better calculation
     const savePlayerData = useCallback(() => {
         try {
             // Don't save admin data to leaderboard
@@ -37,18 +39,26 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 return;
             }
 
+            // Calculate current function value for save
+            const currentFunctionValue = calculateFunctionValue();
+
             const playerData = {
                 name: playerName,
                 points: Math.floor(currency),
-                pointsPerSec: functionValue,
-                upgradeIds: boughtUpgrades,
+                pointsPerSec: currentFunctionValue,
+                upgradeIds: [...boughtUpgrades],
                 upgradeCount: boughtUpgrades.length,
                 variables: { ...variables },
                 solvedQuestions: [...solvedQuestions],
                 lastUpdated: new Date().toISOString(),
             };
 
-            console.log("🔄 Saving player data:", playerData);
+            console.log("🔄 Saving player data:", {
+                name: playerName,
+                points: Math.floor(currency),
+                pointsPerSec: currentFunctionValue,
+                upgrades: boughtUpgrades.length
+            });
 
             // Get existing leaderboard data
             const existingData = localStorage.getItem('polynomialUT_leaderboard');
@@ -60,13 +70,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             // Save back to localStorage
             localStorage.setItem('polynomialUT_leaderboard', JSON.stringify(leaderboardData));
 
-            console.log("✅ Player data saved successfully!");
-            console.log("Current leaderboard data:", leaderboardData);
+            console.log("✅ Player data saved successfully for:", playerName);
 
         } catch (error) {
             console.error("❌ Error saving player data:", error);
         }
-    }, [currency, functionValue, boughtUpgrades, variables, solvedQuestions, playerName, isAdmin]);
+    }, [currency, boughtUpgrades, variables, solvedQuestions, playerName, isAdmin]);
 
     // Expose save function to App for logout
     useEffect(() => {
@@ -80,28 +89,46 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         };
     }, [savePlayerData, saveRef]);
 
-    // Auto-save every 5s - FIXED
+    // Auto-save every 5s - FIXED: Save immediately on mount and then every 5s
     useEffect(() => {
+        // Save immediately on component mount
+        savePlayerData();
+
+        // Then set up interval
         const interval = setInterval(() => {
             savePlayerData();
         }, 5000);
+
         return () => clearInterval(interval);
     }, [savePlayerData]);
 
-    // Update points every second
+    // Update points every second AND save more frequently
     useEffect(() => {
         const interval = setInterval(() => {
-            setCurrency(c => c + functionValue);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [functionValue]);
+            setCurrency(c => {
+                const newCurrency = c + functionValue;
 
-    // Also save when important data changes
+                // Save every 10 point increments or every 5 seconds (whichever comes first)
+                if (Math.floor(newCurrency) % 10 === 0) {
+                    setTimeout(() => savePlayerData(), 100);
+                }
+
+                return newCurrency;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [functionValue, savePlayerData]);
+
+    // Save when ANY important data changes
     useEffect(() => {
         if (!isAdmin && playerName !== "Admin") {
-            savePlayerData();
+            const timer = setTimeout(() => {
+                savePlayerData();
+            }, 1000); // Debounce save by 1 second
+            return () => clearTimeout(timer);
         }
-    }, [boughtUpgrades, variables, solvedQuestions]);
+    }, [boughtUpgrades, variables, solvedQuestions, savePlayerData, isAdmin, playerName]);
 
     // Reset leaderboard function for admin
     const resetLeaderboard = () => {
@@ -126,6 +153,9 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     function buyUpgrade(id, cost) {
         setCurrency(c => c - cost);
         setBoughtUpgrades(u => [...u, id]);
+
+        // Save immediately after buying upgrade
+        setTimeout(() => savePlayerData(), 500);
     }
 
     function deductMoney(amount) {
@@ -158,6 +188,9 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         }
         setActivePopup(null);
         setPendingUpgrade(null);
+
+        // Save after completing question
+        setTimeout(() => savePlayerData(), 500);
     }
 
     function viewAnswer(questionId) {
@@ -175,7 +208,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             question: null,
             onBuy: () => buyUpgrade("0", 0)
         },
-
         {
             id: "1",
             title: "──⋆⋅ Constant Term ⋅⋆──",
@@ -188,7 +220,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, a0: 1 }));
             }
         },
-
         {
             id: "2",
             title: "The First of Many",
@@ -201,7 +232,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, a0: 2 }));
             }
         },
-
         {
             id: "3",
             title: "Duplication Glitch?",
@@ -214,7 +244,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, a0: 4 }));
             }
         },
-
         {
             id: "4",
             title: "──⋆⋅ Linear Term ⋅⋆──",
@@ -227,7 +256,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, a1: 1 }));
             }
         },
-
         {
             id: "5.1",
             title: "The First x Increase",
@@ -241,7 +269,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, x: 2 }));
             }
         },
-
         {
             id: "5.2",
             title: "Another Typical Increase",
@@ -255,7 +282,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, a0: 5 }));
             }
         },
-
         {
             id: "6",
             title: "Double? No! Let's Triple!",
@@ -268,7 +294,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, a0: 15 }));
             }
         },
-
         {
             id: "7.1",
             title: "Linear: Upgrade Constant",
@@ -282,7 +307,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, a0: 20 }));
             }
         },
-
         {
             id: "7.2",
             title: "Linear: Upgrade Slope",
@@ -296,7 +320,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, a1: 2 }));
             }
         },
-
         {
             id: "7.3",
             title: "Linear: Upgrade the Input",
@@ -310,7 +333,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, x: 4 }));
             }
         },
-
         {
             id: "8",
             title: "Insane Increase?",
@@ -323,7 +345,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 setVariables(v => ({ ...v, x: 10 }));
             }
         },
-
         {
             id: "9",
             title: "──⋆⋅ Quadratic Term ⋅⋆──",
@@ -390,13 +411,11 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         <div className="min-h-screen bg-base-100 text-base-content">
             {/* Navbar */}
             <div className="sticky top-0 z-50 navbar bg-base-200 px-5 py-2 shadow-md flex items-center min-h-0">
-                {/* Title*/}
                 <div className="flex items-center gap-2 text-xl font-bold text-primary">
                     <BsCaretUpSquare/>
                     Polynomial<span className="text-base">UT</span>
                 </div>
 
-                {/* Function Display */}
                 <div className="absolute left-1/2 transform -translate-x-1/2 top-14 sm:top-2 text-lg font-semibold text-base-100 bg-primary px-2 py-0 rounded">
                     f(x) = {
                     (() => {
@@ -414,12 +433,9 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 }
                 </div>
 
-                {/* Player Info & Actions */}
                 <div className="ml-auto flex items-center gap-2">
-                    {/* Username Display */}
                     <div className="badge badge-primary font-semibold">{playerName}</div>
 
-                    {/* Admin Controls */}
                     {isAdmin && (
                         <button
                             onClick={resetLeaderboard}
@@ -430,7 +446,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                         </button>
                     )}
 
-                    {/* Leaderboard Panel Open */}
                     <button
                         onClick={() => setShowLeaderboard(true)}
                         className="btn btn-sm btn-ghost"
@@ -439,7 +454,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                         <BsTrophy className="text-lg" />
                     </button>
 
-                    {/* Log Out */}
                     <button
                         onClick={onLogout}
                         className="btn btn-sm btn-ghost"
@@ -448,7 +462,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                         <BsBoxArrowRight className="text-lg" />
                     </button>
 
-                    {/* Theme Toggle */}
                     <label className="toggle text-base-content">
                         <input type="checkbox" value="dark" className="theme-controller"/>
                         <svg aria-label="sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -473,20 +486,16 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
-            {/* Upgrade Tree */}
             <div className="my-30 p-6 flex flex-col gap-6">
                 {rows}
             </div>
 
-            {/* Stats Panel */}
             <div className="fixed bottom-4 left-4 w-56 z-40">
                 <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
                     <input type="checkbox" defaultChecked />
-
                     <div className="collapse-title font-semibold text-sm">
                         Stats
                     </div>
-
                     <div className="collapse-content text-sm">
                         <div>Points: {Math.floor(currency)}</div>
                         <div>Points/sec: {functionValue}</div>
@@ -494,15 +503,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
-            {/* Variables Panel */}
             <div className="fixed bottom-4 right-4 w-56 z-40">
                 <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
                     <input type="checkbox" defaultChecked />
-
                     <div className="collapse-title font-semibold text-sm">
                         Variables
                     </div>
-
                     <div className="collapse-content text-sm">
                         {Object.entries(variables)
                             .filter(([_, val]) => val !== 0)
@@ -515,7 +521,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
-            {/* Question Popup */}
             <UpgradePopup
                 popup={activePopup}
                 upgradeCost={pendingUpgrade?.cost}
@@ -528,7 +533,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 showNotification={showNotification}
             />
 
-            {/* Answer Review Popup */}
             <AnimatePresence>
                 {reviewPopup && (
                     <AnswerReviewPopup
@@ -538,7 +542,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 )}
             </AnimatePresence>
 
-            {/* Leaderboard */}
             <AnimatePresence>
                 {showLeaderboard && (
                     <Leaderboard
@@ -549,7 +552,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 )}
             </AnimatePresence>
 
-            {/* Notification */}
             <AnimatePresence>
                 {notification && (
                     <motion.div
@@ -572,7 +574,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 )}
             </AnimatePresence>
 
-            {/* Custom Confirm Dialog */}
             {confirmDialog && (
                 <ConfirmDialog
                     isOpen={true}
@@ -615,7 +616,6 @@ export default function App() {
     };
 
     const handleLogout = () => {
-        // Save before logout if not admin
         if (!isAdmin && saveRef.current) {
             console.log("Saving before logout...");
             saveRef.current();

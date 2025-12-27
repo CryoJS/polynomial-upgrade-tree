@@ -20,9 +20,6 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
 
             const parsedData = JSON.parse(leaderboardData);
 
-            // Debug: Log what we're getting
-            console.log("📊 Raw leaderboard data from localStorage:", parsedData);
-
             // Convert object to array
             const players = Object.values(parsedData)
                 .filter(p => p && p.name && p.name !== "Admin")
