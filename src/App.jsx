@@ -545,7 +545,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     </div>
                     <div className="collapse-content text-sm">
                         <div>Points: {Math.floor(currency)}</div>
-                        <div>Points/sec: {functionValue}</div>
+                        <div>Points/sec: f(x) = {functionValue}</div>
                     </div>
                 </div>
             </div>

@@ -230,9 +230,6 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                                                 </td>
                                                 <td className="text-right">
                                                     <div className="font-bold">{formatNumber(player.points)}</div>
-                                                    <div className="text-xs text-base-content/60">
-                                                        {player.points.toLocaleString()}
-                                                    </div>
                                                 </td>
                                                 <td className="text-right">{Math.floor(player.pointsPerSec)}</td>
                                                 <td className="text-right">{player.upgradeCount}</td>
