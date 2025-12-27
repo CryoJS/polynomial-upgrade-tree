@@ -1,83 +1,91 @@
 import { useState, useEffect } from "react";
-import { BsTrophy, BsArrowClockwise } from "react-icons/bs";
+import { BsTrophy, BsArrowClockwise, BsDatabase, BsCloud } from "react-icons/bs";
 import { motion } from "framer-motion";
+import { supabase } from '../supabaseClient';
 
 export default function Leaderboard({ currentPlayer, onClose, show }) {
     const [leaderboard, setLeaderboard] = useState([]);
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState(null);
+    const [dataSource, setDataSource] = useState('supabase');
+    const [error, setError] = useState(null);
 
-    // Function to load leaderboard data
-    const loadLeaderboard = () => {
+    const loadLeaderboard = async () => {
+        setLoading(true);
+        setError(null);
+
         try {
-            const leaderboardData = localStorage.getItem('polynomialUT_leaderboard');
+            console.log("🔄 Fetching leaderboard from Supabase...");
 
-            if (!leaderboardData) {
-                setLeaderboard([]);
-                setLastUpdated(new Date());
-                return;
+            const { data: players, error } = await supabase
+                .from('players')
+                .select('*')
+                .order('points', { ascending: false })
+                .limit(100);
+
+            if (error) {
+                console.error("❌ Supabase error:", error);
+                throw error;
             }
 
-            const parsedData = JSON.parse(leaderboardData);
+            console.log(`✅ Loaded ${players?.length || 0} players from Supabase`);
 
-            // Convert object to array
-            const players = Object.values(parsedData)
-                .filter(p => p && p.name && p.name !== "Admin")
-                .map(p => {
-                    // Ensure all fields exist
-                    return {
-                        name: p.name || "Unknown",
-                        points: Math.floor(p.points || 0),
-                        pointsPerSec: p.pointsPerSec || 0,
-                        upgradeIds: p.upgradeIds || [],
-                        upgradeCount: p.upgradeCount || (p.upgradeIds ? p.upgradeIds.length : 0),
-                        variables: p.variables || {},
-                        solvedQuestions: p.solvedQuestions || [],
-                        lastUpdated: p.lastUpdated || new Date().toISOString()
-                    };
-                })
-                .sort((a, b) => b.points - a.points);
+            const formattedPlayers = (players || []).map(player => ({
+                name: player.username,
+                points: player.points || 0,
+                pointsPerSec: player.points_per_sec || 0,
+                upgradeCount: player.upgrade_count || 0,
+                variables: player.variables || {},
+                solvedQuestions: player.solved_questions || [],
+                lastUpdated: player.last_updated || new Date().toISOString()
+            }));
 
-            console.log("✅ Processed leaderboard players:", players);
-            setLeaderboard(players);
-            setLastUpdated(new Date());
+            setLeaderboard(formattedPlayers);
+            setDataSource('supabase');
 
-        } catch (error) {
-            console.error("❌ Error loading leaderboard:", error);
-            setLeaderboard([]);
+        } catch (supabaseError) {
+            console.error("⚠️ Failed to load from Supabase:", supabaseError);
+            setError("Failed to load from server. Using local data...");
+
+            // Fallback to localStorage
+            try {
+                const leaderboardData = JSON.parse(localStorage.getItem('polynomialUT_leaderboard') || '{}');
+                const players = Object.values(leaderboardData)
+                    .filter(p => p && p.name && p.name !== "Admin")
+                    .sort((a, b) => b.points - a.points);
+
+                setLeaderboard(players);
+                setDataSource('local');
+            } catch (localError) {
+                console.error("❌ Both sources failed:", localError);
+                setLeaderboard([]);
+            }
         } finally {
             setLoading(false);
+            setLastUpdated(new Date());
         }
     };
 
-    // Load data when leaderboard opens
+    // Load when leaderboard opens
     useEffect(() => {
         if (show) {
-            setLoading(true);
             loadLeaderboard();
         }
     }, [show]);
 
-    // Set up 2-second auto-refresh interval
+    // Auto-refresh every 3 seconds
     useEffect(() => {
         let intervalId;
-
         if (show) {
-            // Set up interval for auto-refresh every 2 seconds
             intervalId = setInterval(() => {
                 loadLeaderboard();
-            }, 2000);
+            }, 3000);
         }
-
-        // Clean up interval on unmount or when show changes
         return () => {
-            if (intervalId) {
-                clearInterval(intervalId);
-            }
+            if (intervalId) clearInterval(intervalId);
         };
     }, [show]);
 
-    // Format large numbers
     const formatNumber = (num) => {
         const n = Math.floor(num);
         if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
@@ -85,15 +93,9 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
         return n.toString();
     };
 
-    // Format time
     const formatTime = (date) => {
         if (!date) return "";
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    };
-
-    const handleRefresh = () => {
-        setLoading(true);
-        loadLeaderboard();
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     return (
@@ -118,14 +120,24 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                             <div className="flex items-center gap-3">
                                 <BsTrophy className="text-2xl text-warning" />
                                 <div>
-                                    <h2 className="card-title text-xl">Leaderboard</h2>
+                                    <h2 className="card-title text-xl">Global Leaderboard</h2>
                                     <div className="flex items-center gap-2 text-sm">
-                                        <div className="text-base-content/70">
-                                            Top {leaderboard.length} players
+                                        <div className="flex items-center gap-1">
+                                            {dataSource === 'supabase' ? (
+                                                <>
+                                                    <BsCloud className="text-info" />
+                                                    <span className="text-info">Live Server</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <BsDatabase className="text-warning" />
+                                                    <span className="text-warning">Local Data</span>
+                                                </>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                            <span className="text-green-600 font-medium">Live</span>
+                                            <span className="text-green-600">Auto-refresh</span>
                                         </div>
                                     </div>
                                 </div>
@@ -133,7 +145,7 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
 
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={handleRefresh}
+                                    onClick={loadLeaderboard}
                                     className="btn btn-sm btn-ghost"
                                     title="Refresh"
                                     disabled={loading}
@@ -149,14 +161,15 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                             </div>
                         </div>
 
-                        {/* Status Bar */}
                         <div className="mt-3 flex items-center justify-between text-xs">
                             <div className="text-base-content/60">
-                                Updates every 2 seconds • Saves every 5 seconds
+                                {dataSource === 'supabase'
+                                    ? "Connected to cloud database • Updates every 3s"
+                                    : "Using local storage • Server connection failed"}
                             </div>
                             {lastUpdated && (
                                 <div className="text-base-content/60">
-                                    Last updated: {formatTime(lastUpdated)}
+                                    Updated: {formatTime(lastUpdated)}
                                 </div>
                             )}
                         </div>
@@ -167,33 +180,30 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-12">
                                 <span className="loading loading-spinner loading-lg text-primary mb-4"></span>
-                                <p className="text-base-content/70">Loading leaderboard...</p>
+                                <p className="text-base-content/70">
+                                    {dataSource === 'supabase'
+                                        ? "Connecting to global leaderboard..."
+                                        : "Loading local leaderboard..."}
+                                </p>
                             </div>
                         ) : leaderboard.length === 0 ? (
                             <div className="text-center py-12">
                                 <div className="text-5xl mb-4">🏆</div>
-                                <h3 className="text-xl font-semibold mb-2">Leaderboard is Empty</h3>
+                                <h3 className="text-xl font-semibold mb-2">No Players Yet</h3>
                                 <p className="text-base-content/70 mb-6">
-                                    Play the game to earn points and appear here!
+                                    Be the first to appear on the global leaderboard!
                                 </p>
-                                <div className="stats shadow">
-                                    <div className="stat">
-                                        <div className="stat-title">Your Chance</div>
-                                        <div className="stat-value">#1</div>
-                                        <div className="stat-desc">Be the first!</div>
-                                    </div>
-                                </div>
                             </div>
                         ) : (
                             <div className="overflow-x-auto rounded-lg border border-base-300">
                                 <table className="table w-full">
                                     <thead className="bg-base-300">
                                     <tr>
-                                        <th className="w-20 text-center font-bold text-base-content">Rank</th>
-                                        <th className="font-bold text-base-content">Player</th>
-                                        <th className="text-right font-bold text-base-content">Points</th>
-                                        <th className="text-right font-bold text-base-content">PPS</th>
-                                        <th className="text-right font-bold text-base-content">Upgrades</th>
+                                        <th className="w-20 text-center">Rank</th>
+                                        <th>Player</th>
+                                        <th className="text-right">Points</th>
+                                        <th className="text-right">PPS</th>
+                                        <th className="text-right">Upgrades</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -202,106 +212,35 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                                         return (
                                             <tr
                                                 key={`${player.name}-${index}`}
-                                                className={`hover:bg-base-300/50 transition-colors ${
-                                                    isCurrentPlayer ? '!bg-primary/10' : ''
-                                                }`}
+                                                className={`hover:bg-base-300/50 ${isCurrentPlayer ? '!bg-primary/10' : ''}`}
                                             >
-                                                {/* Rank */}
-                                                <td className="text-center">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                            <span className={`font-bold text-lg ${
-                                                                index === 0 ? 'text-warning' :
-                                                                    index === 1 ? 'text-base-content/70' :
-                                                                        index === 2 ? 'text-warning/70' :
-                                                                            'text-base-content/60'
-                                                            }`}>
-                                                                {index === 0 && "🥇"}
-                                                                {index === 1 && "🥈"}
-                                                                {index === 2 && "🥉"}
-                                                                {index > 2 && `#${index + 1}`}
-                                                            </span>
-                                                    </div>
+                                                <td className="text-center font-bold">
+                                                    {index === 0 && "🥇"}
+                                                    {index === 1 && "🥈"}
+                                                    {index === 2 && "🥉"}
+                                                    {index > 2 && `#${index + 1}`}
                                                 </td>
-
-                                                {/* Player Name */}
                                                 <td>
                                                     <div className="flex items-center gap-2">
-                                                        <div className="font-semibold">
-                                                            {player.name}
-                                                        </div>
+                                                        <span className="font-semibold">{player.name}</span>
                                                         {isCurrentPlayer && (
-                                                            <span className="badge badge-primary badge-xs font-medium">YOU</span>
+                                                            <span className="badge badge-primary badge-xs">YOU</span>
                                                         )}
                                                     </div>
                                                 </td>
-
-                                                {/* Points */}
                                                 <td className="text-right">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="font-bold text-base">
-                                                                {formatNumber(player.points)}
-                                                        </span>
-                                                        <span className="text-xs text-base-content/60">
-                                                                currently
-                                                        </span>
+                                                    <div className="font-bold">{formatNumber(player.points)}</div>
+                                                    <div className="text-xs text-base-content/60">
+                                                        {player.points.toLocaleString()}
                                                     </div>
                                                 </td>
-
-                                                {/* Points Per Second */}
-                                                <td className="text-right">
-                                                    <div className="flex flex-col items-end">
-                                                            <span className="font-medium">
-                                                                {Math.floor(player.pointsPerSec)}
-                                                            </span>
-                                                        <span className="text-xs text-base-content/60">
-                                                                per second
-                                                            </span>
-                                                    </div>
-                                                </td>
-
-                                                {/* Upgrades */}
-                                                <td className="text-right">
-                                                    <div className="flex flex-col items-end">
-                                                            <span className="font-medium">
-                                                                {player.upgradeCount}
-                                                            </span>
-                                                        <span className="text-xs text-base-content/60">
-                                                                bought
-                                                            </span>
-                                                    </div>
-                                                </td>
+                                                <td className="text-right">{Math.floor(player.pointsPerSec)}</td>
+                                                <td className="text-right">{player.upgradeCount}</td>
                                             </tr>
                                         );
                                     })}
                                     </tbody>
                                 </table>
-                            </div>
-                        )}
-
-                        {/* Footer Stats */}
-                        {!loading && leaderboard.length > 0 && (
-                            <div className="mt-6 pt-6 border-t border-base-300">
-                                <div className="flex flex-wrap justify-between items-center gap-4">
-                                    <div className="text-sm text-base-content/70">
-                                        Total {leaderboard.length} player{leaderboard.length !== 1 ? 's' : ''} •{' '}
-                                        <span className="font-medium">
-                                            {leaderboard.reduce((sum, p) => sum + p.points, 0).toLocaleString()}
-                                        </span> total points
-                                    </div>
-
-                                    {leaderboard.some(p => p.name === currentPlayer && currentPlayer !== "Admin") ? (
-                                        <div className="text-sm">
-                                            <span className="text-base-content/70">Your position: </span>
-                                            <span className="font-bold text-primary">
-                                                #{leaderboard.findIndex(p => p.name === currentPlayer) + 1}
-                                            </span>
-                                        </div>
-                                    ) : currentPlayer !== "Admin" && (
-                                        <div className="text-sm text-warning font-medium">
-                                            Play more to appear on the leaderboard!
-                                        </div>
-                                    )}
-                                </div>
                             </div>
                         )}
                     </div>
