@@ -363,7 +363,7 @@ export default function App() {
             {/* Stats */}
             <div className="fixed bottom-4 left-4 bg-base-200 card p-4">
                 <div className="font-semibold">Stats</div>
-                <div>Points: {currency.toFixed(1)}</div>
+                <div>Points: {currency}</div>
                 <div>Points/sec: {functionValue}</div>
             </div>
 
