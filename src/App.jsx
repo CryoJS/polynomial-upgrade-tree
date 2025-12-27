@@ -310,7 +310,7 @@ export default function App() {
 
                 {/* Function Display */}
                 <div
-                    className="absolute left-1/2 transform -translate-x-1/2 top-13 sm:top-1 text-lg font-semibold text-white bg-primary px-3 py-1 rounded">
+                    className="absolute left-1/2 transform -translate-x-1/2 top-14 sm:top-2 text-lg font-semibold text-base-100 bg-primary px-2 py-0 rounded">
                     f(x) = {
                     (() => {
                         const terms = Object.entries(variables)
