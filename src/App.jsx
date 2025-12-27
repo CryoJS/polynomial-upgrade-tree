@@ -1,17 +1,20 @@
 import { useState, useEffect } from "react";
-import { BsCaretUpSquare } from "react-icons/bs";
+import { BsCaretUpSquare, BsTrophy, BsBoxArrowRight } from "react-icons/bs";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { questionData } from "./questionData";
 import UpgradeBtn from "./components/UpgradeBtn.jsx";
 import UpgradePopup from "./components/UpgradePopup.jsx";
 import AnswerReviewPopup from "./components/AnswerReviewPopup.jsx";
-import { questionData } from "./questionData";
+import LoginPage from "./components/LoginPage";
+import Leaderboard from "./components/Leaderboard";
 
-export default function App() {
+function GamePage({ playerName, onLogout }) {
     const [currency, setCurrency] = useState(0);
     const [boughtUpgrades, setBoughtUpgrades] = useState([]);
     const [variables, setVariables] = useState({ x: 1, a0: 0, a1: 0, a2: 0 });
     const [solvedQuestions, setSolvedQuestions] = useState([]);
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
 
     const [activePopup, setActivePopup] = useState(null);
     const [pendingUpgrade, setPendingUpgrade] = useState(null);
@@ -28,12 +31,44 @@ export default function App() {
         variables.a1 * variables.x +
         variables.a0;
 
+    // Updates player points
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrency(c => c + functionValue);
         }, 1000);
         return () => clearInterval(interval);
     }, [functionValue]);
+
+    // Saves player data to localStorage
+    useEffect(() => {
+        const saveData = () => {
+            try {
+                const playerData = {
+                    name: playerName,
+                    points: Math.floor(currency),
+                    pointsPerSec: functionValue,
+                    upgradeCount: boughtUpgrades.length,
+                    lastUpdated: new Date().toISOString()
+                };
+
+                // Get existing leaderboard data
+                const leaderboardData = JSON.parse(localStorage.getItem('polynomialUT_leaderboard') || '{}');
+
+                // Update this player's data
+                leaderboardData[playerName] = playerData;
+
+                // Save back to localStorage
+                localStorage.setItem('polynomialUT_leaderboard', JSON.stringify(leaderboardData));
+                console.log("Player data saved successfully");
+            } catch (error) {
+                console.error("Error saving player data:", error);
+            }
+        };
+
+        saveData();
+        const saveInterval = setInterval(saveData, 5000);
+        return () => clearInterval(saveInterval);
+    }, [playerName, currency, functionValue, boughtUpgrades]);
 
     function buyUpgrade(id, cost) {
         setCurrency(c => c - cost);
@@ -65,7 +100,9 @@ export default function App() {
         if (pendingUpgrade && pendingUpgrade.question) {
             setSolvedQuestions(prev => [...prev, pendingUpgrade.question]);
         }
-        pendingUpgrade.onBuy();
+        if (pendingUpgrade && pendingUpgrade.onBuy) {
+            pendingUpgrade.onBuy();
+        }
         setActivePopup(null);
         setPendingUpgrade(null);
     }
@@ -319,7 +356,7 @@ export default function App() {
                             .map(([key, val]) => {
                                 const degree = parseInt(key.slice(1));
                                 if (degree === 0) return <span key={key}>{val}</span>;
-                                const coeff = val === 1 ? "" : val; // hide 1
+                                const coeff = val === 1 ? "" : val;
                                 return <span key={key}>{coeff}x{degree > 1 && <sup>{degree}</sup>}</span>;
                             });
                         return terms.length > 0 ? terms.reduce((prev, curr) => [prev, " + ", curr]) : "0";
@@ -327,13 +364,29 @@ export default function App() {
                 }
                 </div>
 
-                {/* Theme Toggle (Light/Dark) */}
-                <div className="ml-auto">
+                {/* Player Info & Actions */}
+                <div className="ml-auto flex items-center gap-2">
+                    <div className="badge badge-primary font-semibold">{playerName}</div>
+                    <button
+                        onClick={() => setShowLeaderboard(true)}
+                        className="btn btn-sm btn-ghost"
+                        title="View Leaderboard"
+                    >
+                        <BsTrophy className="text-lg" />
+                    </button>
+                    <button
+                        onClick={onLogout}
+                        className="btn btn-sm btn-ghost"
+                        title="Logout"
+                    >
+                        <BsBoxArrowRight className="text-lg" />
+                    </button>
+
+                    {/* Theme Toggle */}
                     <label className="toggle text-base-content">
                         <input type="checkbox" value="dark" className="theme-controller"/>
                         <svg aria-label="sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="2" fill="none"
-                               stroke="currentColor">
+                            <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="2" fill="none" stroke="currentColor">
                                 <circle cx="12" cy="12" r="4"></circle>
                                 <path d="M12 2v2"></path>
                                 <path d="M12 20v2"></path>
@@ -346,8 +399,7 @@ export default function App() {
                             </g>
                         </svg>
                         <svg aria-label="moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="2" fill="none"
-                               stroke="currentColor">
+                            <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="2" fill="none" stroke="currentColor">
                                 <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
                             </g>
                         </svg>
@@ -360,23 +412,41 @@ export default function App() {
                 {rows}
             </div>
 
-            {/* Stats */}
-            <div className="fixed bottom-4 left-4 bg-base-200 card p-4">
-                <div className="font-semibold">Stats</div>
-                <div>Points: {currency}</div>
-                <div>Points/sec: {functionValue}</div>
+            {/* Stats Panel */}
+            <div className="fixed bottom-4 left-4 w-56 z-40">
+                <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
+                    <input type="checkbox" defaultChecked />
+
+                    <div className="collapse-title font-semibold text-sm">
+                        Stats
+                    </div>
+
+                    <div className="collapse-content text-sm">
+                        <div>Points: {Math.floor(currency)}</div>
+                        <div>Points/sec: {functionValue}</div>
+                    </div>
+                </div>
             </div>
 
             {/* Variables Panel */}
-            <div className="fixed bottom-4 right-4 bg-base-200 card card-border p-4">
-                <div className="font-semibold">Variables</div>
-                {Object.entries(variables)
-                    .filter(([key, val]) => val !== 0)
-                    .map(([key, val], idx, arr) => (
-                        <div key={key}>
-                            {key.startsWith("a") ? <>a<sub>{key.slice(1)}</sub></> : key} = {val}
-                        </div>
-                    ))}
+            <div className="fixed bottom-4 right-4 w-56 z-40">
+                <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
+                    <input type="checkbox" defaultChecked />
+
+                    <div className="collapse-title font-semibold text-sm">
+                        Variables
+                    </div>
+
+                    <div className="collapse-content text-sm">
+                        {Object.entries(variables)
+                            .filter(([_, val]) => val !== 0)
+                            .map(([key, val]) => (
+                                <div key={key}>
+                                    {key.startsWith("a") ? <>a<sub>{key.slice(1)}</sub></> : key} = {val}
+                                </div>
+                            ))}
+                    </div>
+                </div>
             </div>
 
             {/* Question Popup */}
@@ -398,6 +468,16 @@ export default function App() {
                     <AnswerReviewPopup
                         popup={reviewPopup}
                         onClose={() => setReviewPopup(null)}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Leaderboard */}
+            <AnimatePresence>
+                {showLeaderboard && (
+                    <Leaderboard
+                        currentPlayer={playerName}
+                        onClose={() => setShowLeaderboard(false)}
                     />
                 )}
             </AnimatePresence>
@@ -426,4 +506,24 @@ export default function App() {
             </AnimatePresence>
         </div>
     );
+}
+
+export default function App() {
+    const [playerName, setPlayerName] = useState(null);
+
+    const handleLogin = (name) => {
+        setPlayerName(name);
+    };
+
+    const handleLogout = () => {
+        if (window.confirm("Are you sure you want to logout? Your progress is saved.")) {
+            setPlayerName(null);
+        }
+    };
+
+    if (!playerName) {
+        return <LoginPage onLogin={handleLogin} />;
+    }
+
+    return <GamePage playerName={playerName} onLogout={handleLogout} />;
 }

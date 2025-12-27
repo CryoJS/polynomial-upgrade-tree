@@ -1,10 +1,10 @@
-import JK4Image from "../public/JK4.png";
-import JA1Image from "../public/JA1.png";
-import JA2Image from "../public/JA2.png";
-import JC1Image from "../public/JC1.png";
-import JC2Image from "../public/JC2.png";
-import JT1Image from "../public/JT1.png";
-import JT2Image from "../public/JT2.png";
+import JK4Image from "./pictureSolutions/JK4.png";
+import JA1Image from "./pictureSolutions/JA1.png";
+import JA2Image from "./pictureSolutions/JA2.png";
+import JC1Image from "./pictureSolutions/JC1.png";
+import JC2Image from "./pictureSolutions/JC2.png";
+import JT1Image from "./pictureSolutions/JT1.png";
+import JT2Image from "./pictureSolutions/JT2.png";
 
 // Question ID Format: Author -> Category -> Question #
 export const questionData = {
