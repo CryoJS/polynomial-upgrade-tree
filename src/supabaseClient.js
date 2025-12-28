@@ -94,3 +94,26 @@ export const getLeaderboardFromSupabase = async (limit = 100) => {
         return { success: false, error };
     }
 };
+
+// Verify admin credentials
+export const verifyAdminPassword = async (password) => {
+    try {
+        console.log('🛡️ Verifying admin password...');
+
+        // Call the RPC function to check password
+        const { data, error } = await supabase.rpc('check_admin_password', {
+            input_password: password
+        });
+
+        if (error) {
+            console.error('❌ Error checking admin password:', error.message);
+            return false;
+        }
+
+        console.log('✅ Admin password check result:', data);
+        return data === true;
+    } catch (error) {
+        console.error('❌ Unexpected error in admin verification:', error);
+        return false;
+    }
+};

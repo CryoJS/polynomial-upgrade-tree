@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef } from "react";
-import { BsEye, BsAward } from "react-icons/bs";
+import { BsEye, BsAward, BsKey } from "react-icons/bs";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { useAudio } from '../contexts/AudioContext';
+import { questionData } from '../questionData';
 
 function MathText({ text }) {
     const containerRef = useRef(null);
@@ -41,18 +42,43 @@ function MathText({ text }) {
     return <span ref={containerRef}></span>;
 }
 
-export default function UpgradeBtn({id, title, description, cost, prereqs, boughtUpgrades, currency, onBuy, onViewAnswer, hasAnswer, isMilestone = false}) {
+export default function UpgradeBtn({
+                                       id,
+                                       title,
+                                       description,
+                                       cost,
+                                       prereqs,
+                                       boughtUpgrades,
+                                       currency,
+                                       onBuy,
+                                       onViewAnswer,
+                                       hasAnswer,
+                                       isMilestone = false,
+                                       question,
+                                       isAdmin = false
+                                   }) {
     const { playSoundEffect } = useAudio();
     const isBought = boughtUpgrades.includes(id);
     const prereqsMet = prereqs.every(p => boughtUpgrades.includes(p));
     const canBuy = prereqsMet && currency >= cost && !isBought;
 
+    // Get passcode from questionData for code-type questions
+    const getPasscode = () => {
+        if (!question || !questionData[question]) return null;
+
+        const qData = questionData[question];
+        if (qData.type === "code") {
+            return qData.correct; // This is the passcode from your questionData.js
+        }
+        return null;
+    };
+
+    const passcode = getPasscode();
+
     const handleBuyClick = () => {
         if (canBuy) {
-            // The parent component will play purchase-success sound
             onBuy();
         } else {
-            // Play fail sound if user tries to click disabled button
             playSoundEffect('purchase-fail');
         }
     };
@@ -84,12 +110,23 @@ export default function UpgradeBtn({id, title, description, cost, prereqs, bough
                         : "border-red-600 border-2"
             } ${isMilestone && !isBought ? "hover:shadow-[0_0_30px_rgba(139,92,246,0.4)] transition-all duration-300" : ""}`}
         >
+
+            {/* Show passcode for admin (if this upgrade has a code-type question) */}
+            {isAdmin && passcode && (
+                <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 z-20">
+                    <div className="bg-success text-success-content px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg border border-success-content">
+                        <BsKey className="text-xs" />
+                        <span>Passcode: {passcode}</span>
+                    </div>
+                </div>
+            )}
+
             {/* Gradient border background for milestones */}
             {isMilestone && !isBought && canBuy && (
                 <div
                     className="absolute -inset-[2px] rounded-lg -z-10"
                     style={{
-                        background: 'linear-gradient(45deg, #06b6d4, #8b5cf6, #f43f5e, #06b6d4)', // KEPT cyan-purple-pink
+                        background: 'linear-gradient(45deg, #06b6d4, #8b5cf6, #f43f5e, #06b6d4)',
                         padding: '2px',
                     }}
                 >

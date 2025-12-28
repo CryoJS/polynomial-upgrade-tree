@@ -112,6 +112,26 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         }
     }, [currency, functionValue, boughtUpgrades, variables, solvedQuestions, playerName, isAdmin]);
 
+    // Admin Auto Unlock
+    useEffect(() => {
+        if (isAdmin) {
+            // Auto-unlock all upgrades for admin
+            const allUpgradeIds = upgrades.map(u => u.id);
+            if (boughtUpgrades.length !== allUpgradeIds.length) {
+                setBoughtUpgrades(allUpgradeIds);
+            }
+
+            // Auto-solve all questions for admin
+            const allQuestionIds = upgrades
+                .map(u => u.question)
+                .filter(q => q && !solvedQuestions.includes(q));
+
+            if (allQuestionIds.length > 0) {
+                setSolvedQuestions(prev => [...prev, ...allQuestionIds]);
+            }
+        }
+    }, [isAdmin, boughtUpgrades.length, solvedQuestions.length, currency]);
+
     // Expose save function to App for logout
     useEffect(() => {
         if (saveRef) {
@@ -458,6 +478,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                             onViewAnswer={() => viewAnswer(u.question)}
                             hasAnswer={u.question && solvedQuestions.includes(u.question)}
                             isMilestone={u.isMilestone || false}
+                            isAdmin={isAdmin}
                         />
                     ))}
                 </div>
@@ -475,6 +496,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                         onViewAnswer={() => viewAnswer(upg.question)}
                         hasAnswer={upg.question && solvedQuestions.includes(upg.question)}
                         isMilestone={upg.isMilestone || false}
+                        isAdmin={isAdmin}
                     />
                 </div>
             );
