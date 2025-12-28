@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { BsCaretUpSquare, BsTrophy, BsBoxArrowRight, BsMusicNoteBeamed } from "react-icons/bs";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase, saveUserData, verifyAdminPassword, loadUserData, forceSaveUser } from './supabaseClient';
+import { supabase, saveUserData, loadUserData, forceSaveUser } from './supabaseClient';
 
 import { questionData } from "./questionData";
-import UpgradeBtn from "./components/UpgradeBtn.jsx";
-import UpgradePopup from "./components/UpgradePopup.jsx";
-import AnswerReviewPopup from "./components/AnswerReviewPopup.jsx";
+import UpgradeBtn from "./components/UpgradeBtn";
+import UpgradePopup from "./components/UpgradePopup";
+import AnswerReviewPopup from "./components/AnswerReviewPopup";
 import LoginPage from "./components/LoginPage";
 import Leaderboard from "./components/Leaderboard";
-import ConfirmDialog from "./components/ConfirmDialog.jsx";
+import ConfirmDialog from "./components/ConfirmDialog";
+import MultiplierRain from "./components/MultiplierRain";
 import AudioControls from './components/AudioControls';
 import { useAudio } from './contexts/AudioContext';
 
@@ -20,11 +21,11 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     const [solvedQuestions, setSolvedQuestions] = useState(savedPlayerData?.solvedQuestions || []);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [showAudioControls, setShowAudioControls] = useState(false);
-    const { playSoundEffect, playBackgroundMusic, isMusicPlaying, isMuted } = useAudio();
+    const { playSoundEffect, isMusicPlaying, isMuted } = useAudio();
 
     const [activePopup, setActivePopup] = useState(null);
     const [pendingUpgrade, setPendingUpgrade] = useState(null);
-    const [notification, setNotification] = useState(null);
+    const [notifications, setNotifications] = useState([]);
     const [reviewPopup, setReviewPopup] = useState(null);
     const [confirmDialog, setConfirmDialog] = useState(null);
 
@@ -32,8 +33,68 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     const calculateFunctionValue = (vars = variables) => {
         return vars.a2 * vars.x ** 2 + vars.a1 * vars.x + vars.a0;
     };
-
     const functionValue = calculateFunctionValue();
+
+    const handleManualClick = () => {
+        setCurrency(c => c + functionValue);
+        playSoundEffect('click');
+    };
+
+    // Notifications
+    function showNotification(message, type = "success", duration = 1200, options = {}) {
+        const typeConfigs = {
+            success: { icon: "✅" },
+            error: { icon: "❌" },
+            info: { icon: "ℹ️" },
+            warning: { icon: "⚠️" },
+            constant: { icon: "💵" },
+            rare: { icon: "✨" }
+        };
+
+        const config = typeConfigs[type] || typeConfigs.info;
+        const id = Date.now() + Math.random();
+        const newNotification = {
+            id,
+            message,
+            type,
+            icon: config.icon,
+            ...options
+        };
+
+        setNotifications(prev => [newNotification, ...prev]);
+
+        setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        }, duration);
+
+        return id;
+    }
+
+    const handleCollectMultiplier = (multiplier, value) => {
+        // Add points
+        setCurrency(c => c + value);
+
+        // Show appropriate notification
+        if (multiplier.type === 'rare') {
+            showNotification(
+                `+${value} points! (${multiplier.display})`,
+                "rare",
+                1500,
+                { isRare: true }
+            );
+            playSoundEffect('reward');
+        } else {
+            showNotification(
+                `+${multiplier.value} points collected!`,
+                "constant",
+                1200
+            );
+            playSoundEffect('click');
+        }
+
+        // Save after collection
+        setTimeout(() => savePlayerData(), 500);
+    };
 
     // Save player data function
     const savePlayerData = useCallback(async () => {
@@ -147,6 +208,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
 
     // Reset leaderboard function for admin
     const resetLeaderboard = () => {
+        playSoundEffect('click');
         setConfirmDialog({
             message: "Are you sure you want to reset the leaderboard? This will delete ALL player data from the Supabase database.",
             confirmText: "Yes, Delete All Data",
@@ -177,14 +239,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     setConfirmDialog(null);
                 }
             },
-            onCancel: () => setConfirmDialog(null),
+            onCancel: () => {
+                playSoundEffect('click');
+                setConfirmDialog(null);
+            },
         });
     };
-
-    function showNotification(message, type = "success", duration = 1200) {
-        setNotification({ message, type });
-        setTimeout(() => setNotification(null), duration);
-    }
 
     function buyUpgrade(id, cost) {
         setCurrency(c => c - cost);
@@ -198,6 +258,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     }
 
     function attemptBuy(upgrade) {
+        playSoundEffect('click');
         if (!upgrade.question) {
             upgrade.onBuy();
             showNotification("Upgrade purchased!", "success");
@@ -234,6 +295,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     }
 
     function viewAnswer(questionId) {
+        playSoundEffect('click');
         const popup = questionData[questionId];
         if (popup) setReviewPopup(popup);
     }
@@ -249,11 +311,56 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             onBuy: () => buyUpgrade("0", 0)
         },
         {
+            id: "0.1",
+            title: "What are points?",
+            description: "Points are generated passively, at a rate of the value of f(x) every second.",
+            cost: 0,
+            prereqs: ["0"],
+            question: null,
+            onBuy: () => buyUpgrade("0.1", 0)
+        },
+        {
+            id: "0.2",
+            title: "How do I get more points?",
+            description: "You can buy upgrades, using points, to make your polynomial function (at the top) more profitable.",
+            cost: 0,
+            prereqs: ["0.1"],
+            question: null,
+            onBuy: () => buyUpgrade("0.2", 0)
+        },
+        {
+            id: "0.3",
+            title: "What if I want points, fast?",
+            description: "Don't fret! See that button on the top left, you can gain f(x) points for every press! You will be able to earn points when you unlock upgrade #1.",
+            cost: 0,
+            prereqs: ["0.2"],
+            question: null,
+            onBuy: () => buyUpgrade("0.3", 0)
+        },
+        {
+            id: "0.4",
+            title: "And there's... more!",
+            description: "You can also collect the falling function expressions to gain more points, based on the value of that expression.",
+            cost: 0,
+            prereqs: ["0.3"],
+            question: null,
+            onBuy: () => buyUpgrade("0.4", 0)
+        },
+        {
+            id: "0.5",
+            title: "But it's not so easy...",
+            description: "For most upgrades, you will need to correctly answer math questions on polynomials to obtain that upgrade.\n\nIf you answer wrong, you lose points and don't get the upgrade. Good luck!",
+            cost: 0,
+            prereqs: ["0.4"],
+            question: null,
+            onBuy: () => buyUpgrade("0.5", 0)
+        },
+        {
             id: "1",
             title: "Constant Term",
             description: "Start generating points!\nUnlock degree 0 term: a₀ = 1.",
             cost: 0,
-            prereqs: ["0"],
+            prereqs: ["0.5"],
             question: "JK1",
             isMilestone: true,
             onBuy: () => {
@@ -265,11 +372,11 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "2",
             title: "The First of Many",
             description: "Upgrade a₀ to 2.",
-            cost: 3,
+            cost: 30,
             prereqs: ["1"],
             question: "JA1",
             onBuy: () => {
-                buyUpgrade("2", 3);
+                buyUpgrade("2", 30);
                 setVariables(v => ({ ...v, a0: 2 }));
             }
         },
@@ -277,11 +384,11 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "3",
             title: "Duplication Glitch?",
             description: "Double a₀'s value!",
-            cost: 10,
+            cost: 100,
             prereqs: ["2"],
             question: "JK2",
             onBuy: () => {
-                buyUpgrade("3", 10);
+                buyUpgrade("3", 100);
                 setVariables(v => ({ ...v, a0: 4 }));
             }
         },
@@ -289,12 +396,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "4",
             title: "Linear Term",
             description: "Unlock degree 1 term: a₁ × x, where a₁ = 1.",
-            cost: 20,
+            cost: 200,
             prereqs: ["3"],
             question: "JC1",
             isMilestone: true,
             onBuy: () => {
-                buyUpgrade("4", 20);
+                buyUpgrade("4", 200);
                 setVariables(v => ({ ...v, a1: 1 }));
             }
         },
@@ -302,12 +409,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "5.1",
             title: "The First x Increase",
             description: "Upgrade x's value to 2.",
-            cost: 30,
+            cost: 300,
             prereqs: ["4"],
             rowGroup: 5,
             question: "JK3",
             onBuy: () => {
-                buyUpgrade("5.1", 30);
+                buyUpgrade("5.1", 300);
                 setVariables(v => ({ ...v, x: 2 }));
             }
         },
@@ -315,12 +422,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "5.2",
             title: "Another Typical Increase",
             description: "Upgrade a₀'s value to 5.",
-            cost: 30,
+            cost: 300,
             prereqs: ["4"],
             rowGroup: 5,
             question: "JT2",
             onBuy: () => {
-                buyUpgrade("5.2", 30);
+                buyUpgrade("5.2", 300);
                 setVariables(v => ({ ...v, a0: 5 }));
             }
         },
@@ -328,11 +435,11 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "6",
             title: "Double? No! Let's Triple!",
             description: "Triple a₀'s value.",
-            cost: 100,
-            prereqs: ["4"],
+            cost: 1000,
+            prereqs: ["5.1", "5.2"],
             question: "JK4",
             onBuy: () => {
-                buyUpgrade("6", 100);
+                buyUpgrade("6", 1000);
                 setVariables(v => ({ ...v, a0: 15 }));
             }
         },
@@ -340,12 +447,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "7.1",
             title: "Linear: Upgrade Constant",
             description: "Upgrade a₀'s value to 20.",
-            cost: 200,
+            cost: 2000,
             prereqs: ["6"],
             rowGroup: 7,
             question: "JA2",
             onBuy: () => {
-                buyUpgrade("7.1", 200);
+                buyUpgrade("7.1", 2000);
                 setVariables(v => ({ ...v, a0: 20 }));
             }
         },
@@ -353,12 +460,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "7.2",
             title: "Linear: Upgrade Slope",
             description: "Upgrade a₁'s value to 2.",
-            cost: 200,
+            cost: 2000,
             prereqs: ["6"],
             rowGroup: 7,
             question: "JK5",
             onBuy: () => {
-                buyUpgrade("7.2", 200);
+                buyUpgrade("7.2", 2000);
                 setVariables(v => ({ ...v, a1: 2 }));
             }
         },
@@ -366,12 +473,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "7.3",
             title: "Linear: Upgrade the Input",
             description: "Double x's value.",
-            cost: 200,
+            cost: 2000,
             prereqs: ["6"],
             rowGroup: 7,
             question: "JC2",
             onBuy: () => {
-                buyUpgrade("7.3", 200);
+                buyUpgrade("7.3", 2000);
                 setVariables(v => ({ ...v, x: 4 }));
             }
         },
@@ -379,11 +486,11 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             id: "8",
             title: "Insane Increase?",
             description: "Set x's value to 10.",
-            cost: 500,
+            cost: 5000,
             prereqs: ["7.1", "7.2", "7.3"],
             question: "JK6",
             onBuy: () => {
-                buyUpgrade("8", 500);
+                buyUpgrade("8", 5000);
                 setVariables(v => ({ ...v, x: 10 }));
             }
         },
@@ -506,7 +613,10 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     )}
 
                     {/* Theme Toggle */}
-                    <label className="toggle toggle-sm sm:toggle-md text-base-content ml-2">
+                    <label
+                        onClick={() => playSoundEffect('click')}
+                        className="toggle toggle-sm sm:toggle-md text-base-content ml-2"
+                    >
                         <input type="checkbox" value="dark" className="theme-controller"/>
                         <svg aria-label="sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <g strokeLinejoin="round" strokeLinecap="round" strokeWidth="2" fill="none" stroke="currentColor">
@@ -550,7 +660,10 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
 
                     {/* Leaderboard Panel Btn */}
                     <button
-                        onClick={() => setShowLeaderboard(true)}
+                        onClick={() => {
+                            playSoundEffect('click');
+                            setShowLeaderboard(true);
+                        }}
                         className="btn btn-xs sm:btn-sm btn-ghost px-[0.7em]"
                         title="View Leaderboard"
                     >
@@ -559,7 +672,10 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
 
                     {/* Log Out */}
                     <button
-                        onClick={onLogout}
+                        onClick={() => {
+                            playSoundEffect('click');
+                            onLogout();
+                        }}
                         className="btn btn-xs sm:btn-sm btn-ghost px-[0.7em]"
                         title="Logout"
                     >
@@ -568,20 +684,49 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
+            {/* Manual Click Button */}
+            <div className="fixed top-16 left-4 z-40">
+                <motion.button
+                    onClick={handleManualClick}
+                    whileTap={{ scale: 0.95 }}
+                    className="btn btn-primary shadow-lg px-4 sm:px-6 py-6 sm:py-8 text-base sm:text-lg font-bold rounded-xl"
+                    title="Click to earn points!"
+                >
+                    <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                            <BsCaretUpSquare className="text-xl sm:text-2xl" />
+                            <span className="whitespace-nowrap">Click: +{functionValue}</span>
+                        </div>
+                        <div className="text-xs sm:text-sm font-normal opacity-90 whitespace-nowrap">
+                            {Math.floor(currency)} points
+                        </div>
+                    </div>
+                </motion.button>
+            </div>
+
+            {/* Multiplier Rain */}
+            <MultiplierRain
+                functionValue={functionValue}
+                onCollectMultiplier={handleCollectMultiplier}
+                variables={variables}
+                isActive={true}
+            />
+
             {/* Upgrade Tree */}
-            <div className="my-20 sm:my-30 p-4 sm:p-6 flex flex-col gap-4 sm:gap-6">
+            <div className="my-10 sm:my-15 p-4 sm:p-6 flex flex-col gap-4 sm:gap-6">
                 {rows}
             </div>
 
             {/* Stats Panel - Mobile: bottom left, Desktop: bottom left */}
-            <div className="fixed bottom-2 left-2 sm:bottom-4 sm:left-4 w-36 sm:w-56 z-40">
+            <div
+                onClick={() => playSoundEffect('click')}
+                className="fixed bottom-2 left-2 sm:bottom-4 sm:left-4 w-36 sm:w-56 z-40"
+            >
                 <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
                     <input type="checkbox" defaultChecked />
-
                     <div className="collapse-title font-semibold text-xs sm:text-sm">
                         Stats
                     </div>
-
                     <div className="collapse-content text-xs sm:text-sm">
                         <div>Points: {Math.floor(currency)}</div>
                         <div>Points/sec: {functionValue}</div>
@@ -590,14 +735,15 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             </div>
 
             {/* Variables Panel - Mobile: bottom right, Desktop: bottom right */}
-            <div className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 w-36 sm:w-56 z-40">
+            <div
+                onClick={() => playSoundEffect('click')}
+                className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 w-36 sm:w-56 z-40"
+            >
                 <div className="collapse collapse-arrow bg-base-200 shadow-lg rounded-box">
                     <input type="checkbox" defaultChecked />
-
                     <div className="collapse-title font-semibold text-xs sm:text-sm">
                         Variables
                     </div>
-
                     <div className="collapse-content text-xs sm:text-sm">
                         {Object.entries(variables)
                             .filter(([_, val]) => val !== 0)
@@ -610,7 +756,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
-            {/* Popups */}
+            {/* Upgrade Popup */}
             <UpgradePopup
                 popup={activePopup}
                 upgradeCost={pendingUpgrade?.cost}
@@ -618,48 +764,88 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 onSuccess={handleQuestionSuccess}
                 onFail={handleQuestionFail}
                 onClose={() => {
+                    playSoundEffect('click');
                     setActivePopup(null);
                     setPendingUpgrade(null);
                 }}
                 showNotification={showNotification}
             />
+
+            {/* Answer Review Popup */}
             <AnimatePresence>
                 {reviewPopup && (
                     <AnswerReviewPopup
                         popup={reviewPopup}
-                        onClose={() => setReviewPopup(null)}
+                        onClose={() => {
+                            playSoundEffect('click');
+                            setReviewPopup(null);
+                        }}
                     />
                 )}
             </AnimatePresence>
+
+            {/* Notification Popup */}
             <AnimatePresence>
-                {notification && (
-                    <motion.div
-                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
-                        initial={{ y: 40, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 40, opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 30, mass: 0.5 }}
-                    >
-                        <div
-                            className={`px-4 py-2 border rounded text-center min-w-[260px] bg-base-100 backdrop-blur-sm ${
-                                notification.type === "success"
-                                    ? "text-success"
-                                    : "text-error"
-                            }`}
+                {notifications.map((notification, index) => {
+                    const bottomPosition = 12 + (index * 40);
+
+                    return (
+                        <motion.div
+                            key={notification.id}
+                            className="fixed inset-x-0 z-[100] flex justify-center"
+                            style={{
+                                bottom: `${bottomPosition}px`
+                            }}
+                            initial={{ y: 15, opacity: 0, scale: 0.95 }}
+                            animate={{ y: 0, opacity: 1, scale: 1 }}
+                            exit={{ y: -8, opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
                         >
-                            {notification.message}
-                        </div>
-                    </motion.div>
-                )}
+                            <div
+                                className={`px-3 py-1.5 rounded border text-sm backdrop-blur-sm ${
+                                    notification.type === "success"
+                                        ? "bg-base-100/90 border-success/50 text-success"
+                                        : notification.type === "error"
+                                            ? "bg-base-100/90 border-error/50 text-error"
+                                            : notification.type === "warning"
+                                                ? "bg-base-100/90 border-warning/50 text-warning"
+                                                : notification.type === "info"
+                                                    ? "bg-base-100/90 border-info/50 text-info"
+                                                    : notification.type === "rare"
+                                                        ? "bg-base-100/90 border-warning text-warning border"
+                                                        : notification.type === "constant"
+                                                            ? "bg-base-100/90 border-amber-300/50 text-amber-600"
+                                                            : "bg-base-100/90 border-base-300 text-base-content"
+                                }`}
+                            >
+                                <div className="flex items-center justify-center gap-1.5">
+                                    {notification.icon && (
+                                        <span className="text-sm">{notification.icon}</span>
+                                    )}
+                                    <span>{notification.message}</span>
+                                </div>
+                            </div>
+                        </motion.div>
+                    );
+                })}
             </AnimatePresence>
+
+            {/* Alert Confirm Popup */}
             {confirmDialog && (
                 <ConfirmDialog
                     isOpen={true}
                     message={confirmDialog.message}
-                    onConfirm={confirmDialog.onConfirm}
-                    onCancel={confirmDialog.onCancel}
+                    onConfirm={() => {
+                        playSoundEffect('click');
+                        confirmDialog.onConfirm();
+                    }}
+                    onCancel={() => {
+                        playSoundEffect('click');
+                        confirmDialog.onCancel();
+                    }}
                 />
             )}
+
             {/* Show audio controls when toggled */}
             {showAudioControls && <AudioControls />}
 
@@ -669,7 +855,10 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     <Leaderboard
                         currentPlayer={playerName}
                         show={showLeaderboard}
-                        onClose={() => setShowLeaderboard(false)}
+                        onClose={() => {
+                            playSoundEffect('click');
+                            setShowLeaderboard(false);
+                        }}
                     />
                 )}
             </AnimatePresence>

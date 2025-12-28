@@ -120,14 +120,14 @@ export default function UpgradePopup({ popup, onSuccess, onFail, onClose, deduct
                             type="text"
                             value={selected || ""}
                             onChange={e => setSelected(e.target.value)}
-                            className="input input-bordered w-full mb-4 focus:border-primary focus:ring-1 focus:ring-primary"
+                            className="input input-bordered w-full mb-4 focus:outline-none focus:border-base-content focus:ring-0"
                             placeholder="Ask a judge to review your solution, to receive a passcode."
                         />
                     )}
                 </div>
 
                 {/* Fixed Footer */}
-                <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                <div className="flex justify-end gap-2 pt-2">
                     <button
                         className="btn btn-secondary btn-sm sm:btn-md"
                         onClick={onClose}

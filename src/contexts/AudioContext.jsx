@@ -22,13 +22,18 @@ export const AudioProvider = ({ children }) => {
         bgMusicRef.current.volume = isMuted ? 0 : musicVolume; // 50% volume
 
         // Preload sound effects
-        const sfxToPreload = ['purchase-success', 'purchase-fail'];
+        const sfxToPreload = ['purchase-success', 'purchase-fail', 'click', 'reward'];
         sfxToPreload.forEach(sfx => {
             const audio = new Audio(`/audio/${sfx}.mp3`);
+            // Set appropriate volumes for each sound
             if (sfx === 'purchase-success') {
                 audio.volume = sfxVolume * 0.3; // Success sound at 30% of SFX volume
+            } else if (sfx === 'click') {
+                audio.volume = sfxVolume * 0.7; // Click sound at 70% of SFX volume
+            } else if (sfx === 'reward') {
+                audio.volume = sfxVolume * 0.8; // Reward sound at 80% of SFX volume
             } else {
-                audio.volume = sfxVolume; // Fail sound at regular SFX volume
+                audio.volume = sfxVolume; // Other sounds at regular SFX volume
             }
             audioElementsRef.current[sfx] = audio;
         });
@@ -64,10 +69,18 @@ export const AudioProvider = ({ children }) => {
     useEffect(() => {
         Object.keys(audioElementsRef.current).forEach(key => {
             const audio = audioElementsRef.current[key];
-            if (key === 'purchase-success') {
-                audio.volume = isMuted ? 0 : sfxVolume * 0.3; // 30% of SFX volume
+            if (isMuted) {
+                audio.volume = 0;
             } else {
-                audio.volume = isMuted ? 0 : sfxVolume;
+                if (key === 'purchase-success') {
+                    audio.volume = sfxVolume * 0.3; // 30% of SFX volume
+                } else if (key === 'click') {
+                    audio.volume = sfxVolume * 0.7; // Click sound at 70% of SFX volume
+                } else if (key === 'reward') {
+                    audio.volume = sfxVolume * 0.8; // Reward sound at 80% of SFX volume
+                } else {
+                    audio.volume = sfxVolume; // Other sounds at regular SFX volume
+                }
             }
         });
     }, [sfxVolume, isMuted]);
@@ -119,8 +132,13 @@ export const AudioProvider = ({ children }) => {
         if (!audio) {
             // Create new audio element if not preloaded
             audio = new Audio(`/audio/${soundName}.mp3`);
+            // Set appropriate volume based on sound type
             if (soundName === 'purchase-success') {
                 audio.volume = sfxVolume * 0.3; // 30% of SFX volume
+            } else if (soundName === 'click') {
+                audio.volume = sfxVolume * 0.7; // Click sound at 70% of SFX volume
+            } else if (soundName === 'reward') {
+                audio.volume = sfxVolume * 0.8; // Reward sound at 80% of SFX volume
             } else {
                 audio.volume = sfxVolume;
             }
