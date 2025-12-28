@@ -5,17 +5,21 @@ import { supabase } from '../supabaseClient';
 
 export default function Leaderboard({ currentPlayer, onClose, show }) {
     const [leaderboard, setLeaderboard] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // Changed to false initially
+    const [refreshing, setRefreshing] = useState(false); // New state for auto-refresh
     const [lastUpdated, setLastUpdated] = useState(null);
     const [dataSource, setDataSource] = useState('supabase');
     const [error, setError] = useState(null);
 
-    const loadLeaderboard = async () => {
-        setLoading(true);
+    const loadLeaderboard = async (isAutoRefresh = false) => {
+        if (!isAutoRefresh) {
+            setLoading(true);
+        }
+        setRefreshing(true);
         setError(null);
 
         try {
-            console.log("🔄 Fetching leaderboard from Supabase...");
+            console.log(`🔄 ${isAutoRefresh ? "Auto-refreshing" : "Fetching"} leaderboard from Supabase...`);
 
             const { data: players, error } = await supabase
                 .from('players')
@@ -61,7 +65,10 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                 setLeaderboard([]);
             }
         } finally {
-            setLoading(false);
+            if (!isAutoRefresh) {
+                setLoading(false);
+            }
+            setRefreshing(false);
             setLastUpdated(new Date());
         }
     };
@@ -78,7 +85,7 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
         let intervalId;
         if (show) {
             intervalId = setInterval(() => {
-                loadLeaderboard();
+                loadLeaderboard(true); // Pass true for auto-refresh
             }, 3000);
         }
         return () => {
@@ -136,7 +143,7 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                            <div className={`w-2 h-2 rounded-full ${refreshing ? 'bg-green-500 animate-pulse' : 'bg-green-500'}`}></div>
                                             <span className="text-green-600">Auto-refresh</span>
                                         </div>
                                     </div>
@@ -145,12 +152,16 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
 
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={loadLeaderboard}
-                                    className="btn btn-sm btn-ghost"
+                                    onClick={() => loadLeaderboard(false)}
+                                    className="btn btn-sm btn-ghost relative"
                                     title="Refresh"
-                                    disabled={loading}
+                                    disabled={loading || refreshing}
                                 >
-                                    <BsArrowClockwise className={`text-base ${loading ? 'animate-spin' : ''}`} />
+                                    <BsArrowClockwise className={`text-base ${refreshing ? 'animate-spin' : ''}`} />
+                                    {/* Subtle refresh indicator */}
+                                    {refreshing && (
+                                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span>
+                                    )}
                                 </button>
                                 <button
                                     onClick={onClose}
@@ -168,14 +179,24 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                                     : "Using local storage • Server connection failed"}
                             </div>
                             {lastUpdated && (
-                                <div className="text-base-content/60">
-                                    Updated: {formatTime(lastUpdated)}
+                                <div className="text-base-content/60 flex items-center gap-1">
+                                    {refreshing ? (
+                                        <>
+                                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                                            <span>Updating...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                            <span>Updated: {formatTime(lastUpdated)}</span>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Content */}
+                    {/* Content - Only show loading on initial load, not on auto-refresh */}
                     <div className="p-6 overflow-auto" style={{ maxHeight: 'calc(85vh - 120px)' }}>
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-12">
@@ -196,6 +217,16 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                             </div>
                         ) : (
                             <div className="overflow-x-auto rounded-lg border border-base-300">
+                                {/*/!* Subtle refresh overlay *!/*/}
+                                {/*{refreshing && (*/}
+                                {/*    <div className="absolute inset-0 bg-base-200/50 backdrop-blur-[1px] flex items-center justify-center z-10">*/}
+                                {/*        <div className="flex items-center gap-2 bg-base-300/80 px-4 py-2 rounded-full shadow-lg">*/}
+                                {/*            <BsArrowClockwise className="animate-spin text-primary" />*/}
+                                {/*            <span className="text-sm font-medium">Refreshing data...</span>*/}
+                                {/*        </div>*/}
+                                {/*    </div>*/}
+                                {/*)}*/}
+
                                 <table className="table w-full">
                                     <thead className="bg-base-300">
                                     <tr>

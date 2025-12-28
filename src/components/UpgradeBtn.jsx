@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { BsEye, BsAward } from "react-icons/bs";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { useAudio } from '../contexts/AudioContext';
 
 function MathText({ text }) {
     const containerRef = useRef(null);
@@ -41,9 +42,20 @@ function MathText({ text }) {
 }
 
 export default function UpgradeBtn({id, title, description, cost, prereqs, boughtUpgrades, currency, onBuy, onViewAnswer, hasAnswer, isMilestone = false}) {
+    const { playSoundEffect } = useAudio();
     const isBought = boughtUpgrades.includes(id);
     const prereqsMet = prereqs.every(p => boughtUpgrades.includes(p));
     const canBuy = prereqsMet && currency >= cost && !isBought;
+
+    const handleBuyClick = () => {
+        if (canBuy) {
+            // The parent component will play purchase-success sound
+            onBuy();
+        } else {
+            // Play fail sound if user tries to click disabled button
+            playSoundEffect('purchase-fail');
+        }
+    };
 
     return (
         <motion.div
@@ -128,11 +140,13 @@ export default function UpgradeBtn({id, title, description, cost, prereqs, bough
 
                     <div className="card-actions justify-center mt-2">
                         {isBought ? (
-                            <button className={`btn btn-disabled ${
-                                isMilestone
-                                    ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-500 border border-blue-500/30 font-bold"
-                                    : "bg-base-300 text-base-content"
-                            }`}>
+                            <button
+                                className={`btn btn-disabled ${
+                                    isMilestone
+                                        ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-500 border border-blue-500/30 font-bold"
+                                        : "bg-base-300 text-base-content"
+                                }`}
+                            >
                                 {isMilestone ? "★ Purchased ★" : "Purchased"}
                             </button>
                         ) : (
@@ -140,12 +154,12 @@ export default function UpgradeBtn({id, title, description, cost, prereqs, bough
                                 className={`btn ${
                                     canBuy
                                         ? isMilestone
-                                            ? "bg-gradient-to-r from-blue-700 to-purple-700 text-white border-0 font-bold hover:scale-105 transition-transform duration-200 shadow-md hover:shadow-lg hover:shadow-purple-500/30" // ADDED hover effects
+                                            ? "bg-gradient-to-r from-blue-700 to-purple-700 text-white border-0 font-bold hover:scale-105 transition-transform duration-200 shadow-md hover:shadow-lg hover:shadow-purple-500/30"
                                             : "btn-success"
                                         : "btn-disabled bg-base-300 text-base-content"
                                 }`}
                                 disabled={!canBuy}
-                                onClick={onBuy}
+                                onClick={handleBuyClick}
                             >
                                 {cost === 0 ? "Buy (Free)" : `Buy (${cost} Points)`}
                             </button>

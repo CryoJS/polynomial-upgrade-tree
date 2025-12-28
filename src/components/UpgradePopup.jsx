@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { useAudio } from '../contexts/AudioContext';
 
 function MathText({ text }) {
     const containerRef = useRef(null);
@@ -39,7 +40,8 @@ function MathText({ text }) {
     return <span ref={containerRef}></span>;
 }
 
-export default function UpgradePopup({ popup, onSuccess, onClose, deductMoney, upgradeCost, showNotification }) {
+export default function UpgradePopup({ popup, onSuccess, onFail, onClose, deductMoney, upgradeCost, showNotification }) {
+    const { playSoundEffect } = useAudio();
     if (!popup) return null;
     const [selected, setSelected] = useState(null);
     const isMC = popup?.type === "mc";
@@ -62,12 +64,12 @@ export default function UpgradePopup({ popup, onSuccess, onClose, deductMoney, u
         if (selected == null) return;
 
         if (selected === popup.correct) {
-            if (showNotification) showNotification("🎉 Correct. Upgrade purchased!", "success");
-            onSuccess();
+            onSuccess(); // Success sound will be played in parent component
         } else {
+            playSoundEffect('purchase-fail'); // Play fail sound for wrong answer
             if (deductMoney && upgradeCost != null) deductMoney(upgradeCost);
             if (showNotification) showNotification("🤔 Wrong answer. Upgrade failed.", "error");
-            onClose();
+            onFail(); // Call the fail handler
         }
     }
 
@@ -102,7 +104,7 @@ export default function UpgradePopup({ popup, onSuccess, onClose, deductMoney, u
                                         className={`text-left px-3 py-2 rounded border ${
                                             isSelected
                                                 ? "border-primary bg-primary/20"
-                                                : "border-gray-300"
+                                                : "border-gray-300 hover:border-primary/50 hover:bg-primary/5 transition-colors duration-150"
                                         }`}
                                         onClick={() => setSelected(i)}
                                     >
@@ -118,7 +120,7 @@ export default function UpgradePopup({ popup, onSuccess, onClose, deductMoney, u
                             type="text"
                             value={selected || ""}
                             onChange={e => setSelected(e.target.value)}
-                            className="input input-bordered w-full mb-4"
+                            className="input input-bordered w-full mb-4 focus:border-primary focus:ring-1 focus:ring-primary"
                             placeholder="Ask a judge to review your solution, to receive a passcode."
                         />
                     )}
@@ -126,7 +128,10 @@ export default function UpgradePopup({ popup, onSuccess, onClose, deductMoney, u
 
                 {/* Fixed Footer */}
                 <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-                    <button className="btn btn-secondary btn-sm sm:btn-md" onClick={onClose}>
+                    <button
+                        className="btn btn-secondary btn-sm sm:btn-md"
+                        onClick={onClose}
+                    >
                         Cancel
                     </button>
                     <button

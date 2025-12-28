@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { BsCaretUpSquare, BsTrophy, BsBoxArrowRight } from "react-icons/bs";
+import { BsCaretUpSquare, BsTrophy, BsBoxArrowRight, BsMusicNoteBeamed } from "react-icons/bs";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from './supabaseClient';
 
@@ -10,6 +10,8 @@ import AnswerReviewPopup from "./components/AnswerReviewPopup.jsx";
 import LoginPage from "./components/LoginPage";
 import Leaderboard from "./components/Leaderboard";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
+import AudioControls from './components/AudioControls';
+import { useAudio } from './contexts/AudioContext';
 
 function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     const [currency, setCurrency] = useState(savedPlayerData?.points || 0);
@@ -17,12 +19,23 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     const [variables, setVariables] = useState(savedPlayerData?.variables || { x: 1, a0: 0, a1: 0, a2: 0 });
     const [solvedQuestions, setSolvedQuestions] = useState(savedPlayerData?.solvedQuestions || []);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [showAudioControls, setShowAudioControls] = useState(false);
+    const { playSoundEffect, playBackgroundMusic, isMusicPlaying, isMuted } = useAudio();
 
     const [activePopup, setActivePopup] = useState(null);
     const [pendingUpgrade, setPendingUpgrade] = useState(null);
     const [notification, setNotification] = useState(null);
     const [reviewPopup, setReviewPopup] = useState(null);
     const [confirmDialog, setConfirmDialog] = useState(null);
+
+    useEffect(() => {
+        // Try to play music after a short delay when app loads
+        const timer = setTimeout(() => {
+            playBackgroundMusic();
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [playBackgroundMusic]);
 
     // Calculate function value
     const calculateFunctionValue = (vars = variables) => {
@@ -200,6 +213,8 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     function buyUpgrade(id, cost) {
         setCurrency(c => c - cost);
         setBoughtUpgrades(u => [...u, id]);
+        // Play success sound
+        playSoundEffect('purchase-success');
 
         // Save immediately after buying upgrade
         setTimeout(() => savePlayerData(), 500);
@@ -227,6 +242,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     }
 
     function handleQuestionSuccess() {
+        playSoundEffect('purchase-success'); // Play success sound for correct answer
         if (pendingUpgrade && pendingUpgrade.question) {
             setSolvedQuestions(prev => [...prev, pendingUpgrade.question]);
         }
@@ -238,6 +254,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
 
         // Save after completing question
         setTimeout(() => savePlayerData(), 500);
+    }
+
+    function handleQuestionFail() {
+        playSoundEffect('purchase-fail'); // Play fail sound for wrong answer
+        setActivePopup(null);
+        setPendingUpgrade(null);
     }
 
     function viewAnswer(questionId) {
@@ -463,16 +485,17 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         <div className="min-h-screen bg-base-100 text-base-content">
             {/* Navbar */}
             <div className="sticky top-0 z-50 navbar bg-base-200 px-2 sm:px-4 py-2 shadow-md flex items-center min-h-0">
-                {/* Title - Shows only icon on mobile */}
+                {/* Title */}
                 <div className="flex items-center gap-2 text-xl font-bold text-primary">
                     <BsCaretUpSquare className="text-2xl" />
-                    <span className="hidden sm:inline">Polynomial<span className="text-base">UT</span></span>
+                    <span className="hidden md:inline">Polynomial<span className="text-base text-base-content"> UT</span></span>
+                    <span className="hidden sm:inline md:hidden">Poly<span className="text-base text-base-content"> UT</span></span>
 
                     {/* Username Display */}
-                    <div className="badge badge-primary font-semibold hidden sm:inline-flex ml-2">
+                    <div className="badge bg-base-content text-base-100 font-semibold hidden md:inline-flex ml-2">
                         {playerName}
                     </div>
-                    <div className="badge badge-primary font-semibold sm:hidden">
+                    <div className="badge bg-base-content text-base-100 font-semibold md:hidden ml-2">
                         {playerName.length > 8 ? playerName.substring(0, 8) + "..." : playerName}
                     </div>
                 </div>
@@ -531,6 +554,26 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                             </g>
                         </svg>
                     </label>
+
+                    {/* Audio Toggle Button */}
+                    <button
+                        onClick={() => {
+                            playSoundEffect('click');
+                            setShowAudioControls(!showAudioControls);
+                        }}
+                        className="btn btn-xs sm:btn-sm btn-ghost px-[0.7em] relative"
+                        title={showAudioControls ? "Hide Audio Controls" : "Show Audio Controls"}
+                    >
+                        <div className="relative">
+                            <BsMusicNoteBeamed className="text-base sm:text-lg" />
+                            {isMusicPlaying && !isMuted && (
+                                <span className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full animate-pulse"></span>
+                            )}
+                            {isMuted && (
+                                <span className="absolute -top-1 -right-1 h-3 w-3 bg-error rounded-full"></span>
+                            )}
+                        </div>
+                    </button>
 
                     {/* Leaderboard Panel Btn */}
                     <button
@@ -600,6 +643,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 upgradeCost={pendingUpgrade?.cost}
                 deductMoney={deductMoney}
                 onSuccess={handleQuestionSuccess}
+                onFail={handleQuestionFail}
                 onClose={() => {
                     setActivePopup(null);
                     setPendingUpgrade(null);
@@ -643,6 +687,8 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     onCancel={confirmDialog.onCancel}
                 />
             )}
+            {/* Show audio controls when toggled */}
+            {showAudioControls && <AudioControls />}
 
             {/* Leaderboard */}
             <AnimatePresence>
