@@ -28,15 +28,6 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     const [reviewPopup, setReviewPopup] = useState(null);
     const [confirmDialog, setConfirmDialog] = useState(null);
 
-    useEffect(() => {
-        // Try to play music after a short delay when app loads
-        const timer = setTimeout(() => {
-            playBackgroundMusic();
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, [playBackgroundMusic]);
-
     // Calculate function value
     const calculateFunctionValue = (vars = variables) => {
         return vars.a2 * vars.x ** 2 + vars.a1 * vars.x + vars.a0;
