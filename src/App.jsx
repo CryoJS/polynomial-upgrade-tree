@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { BsCaretUpSquare, BsTrophy, BsBoxArrowRight, BsMusicNoteBeamed } from "react-icons/bs";
+import { BsCaretUpSquare, BsTrophy, BsBoxArrowRight, BsMusicNoteBeamed, BsHandIndexThumbFill } from "react-icons/bs";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase, saveUserData, loadUserData, forceSaveUser } from './supabaseClient';
 
@@ -47,8 +47,8 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             error: { icon: "❌" },
             info: { icon: "ℹ️" },
             warning: { icon: "⚠️" },
-            constant: { icon: "💵" },
-            rare: { icon: "✨" }
+            constant: { icon: "✨" },
+            rare: { icon: "💎" }
         };
 
         const config = typeConfigs[type] || typeConfigs.info;
@@ -689,13 +689,13 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 <motion.button
                     onClick={handleManualClick}
                     whileTap={{ scale: 0.95 }}
-                    className="btn btn-primary shadow-lg px-4 sm:px-6 py-6 sm:py-8 text-base sm:text-lg font-bold rounded-xl"
+                    className="btn btn-primary shadow-lg px-2 sm:px-3 py-6 sm:py-8 text-base sm:text-lg font-bold rounded-xl"
                     title="Click to earn points!"
                 >
                     <div className="flex flex-col items-center">
                         <div className="flex items-center gap-1 sm:gap-2">
-                            <BsCaretUpSquare className="text-xl sm:text-2xl" />
-                            <span className="whitespace-nowrap">Click: +{functionValue}</span>
+                            <BsHandIndexThumbFill />
+                            <span className="whitespace-nowrap">+{functionValue}</span>
                         </div>
                         <div className="text-xs sm:text-sm font-normal opacity-90 whitespace-nowrap">
                             {Math.floor(currency)} points
@@ -717,7 +717,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 {rows}
             </div>
 
-            {/* Stats Panel - Mobile: bottom left, Desktop: bottom left */}
+            {/* Stats Panel */}
             <div
                 onClick={() => playSoundEffect('click')}
                 className="fixed bottom-2 left-2 sm:bottom-4 sm:left-4 w-36 sm:w-56 z-40"
@@ -734,7 +734,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                 </div>
             </div>
 
-            {/* Variables Panel - Mobile: bottom right, Desktop: bottom right */}
+            {/* Variables Panel */}
             <div
                 onClick={() => playSoundEffect('click')}
                 className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 w-36 sm:w-56 z-40"
@@ -787,7 +787,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             {/* Notification Popup */}
             <AnimatePresence>
                 {notifications.map((notification, index) => {
-                    const bottomPosition = 12 + (index * 40);
+                    const bottomPosition = 12 + (index * 35);
 
                     return (
                         <motion.div
@@ -802,7 +802,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                             transition={{ duration: 0.15 }}
                         >
                             <div
-                                className={`px-3 py-1.5 rounded border text-sm backdrop-blur-sm ${
+                                className={`px-3 py-1 rounded border text-sm backdrop-blur-sm ${
                                     notification.type === "success"
                                         ? "bg-base-100/90 border-success/50 text-success"
                                         : notification.type === "error"
@@ -812,7 +812,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                                                 : notification.type === "info"
                                                     ? "bg-base-100/90 border-info/50 text-info"
                                                     : notification.type === "rare"
-                                                        ? "bg-base-100/90 border-warning text-warning border"
+                                                        ? "bg-base-100/90 border-primary text-primary border"
                                                         : notification.type === "constant"
                                                             ? "bg-base-100/90 border-amber-300/50 text-amber-600"
                                                             : "bg-base-100/90 border-base-300 text-base-content"
