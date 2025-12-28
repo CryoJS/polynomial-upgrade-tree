@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef } from "react";
-import { BsEye } from "react-icons/bs";
+import { BsEye, BsAward } from "react-icons/bs";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
@@ -40,7 +40,7 @@ function MathText({ text }) {
     return <span ref={containerRef}></span>;
 }
 
-export default function UpgradeBtn({id, title, description, cost, prereqs, boughtUpgrades, currency, onBuy, onViewAnswer, hasAnswer}) {
+export default function UpgradeBtn({id, title, description, cost, prereqs, boughtUpgrades, currency, onBuy, onViewAnswer, hasAnswer, isMilestone = false}) {
     const isBought = boughtUpgrades.includes(id);
     const prereqsMet = prereqs.every(p => boughtUpgrades.includes(p));
     const canBuy = prereqsMet && currency >= cost && !isBought;
@@ -49,55 +49,108 @@ export default function UpgradeBtn({id, title, description, cost, prereqs, bough
         <motion.div
             layout
             initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`relative card w-50 sm:w-60 md:w-85 bg-base-200 border-2 ${
-                isBought
-                    ? "border-primary"
+            animate={{
+                opacity: 1,
+                scale: 1,
+                y: isMilestone && !isBought ? [0, -5, 0] : 0,
+            }}
+            transition={{
+                opacity: { duration: 0.3 },
+                scale: { duration: 0.3 },
+                y: isMilestone && !isBought ? {
+                    repeat: Infinity,
+                    duration: 3,
+                    ease: "easeInOut"
+                } : { duration: 0.3 }
+            }}
+            className={`relative bg-base-200 rounded-lg ${
+                isBought ? "border-primary border-2"
                     : canBuy
-                        ? "border-gray-500"
-                        : "border-red-600"
-            }`}
+                        ? isMilestone
+                            ? ""
+                            : "border-gray-500 border-2"
+                        : "border-red-600 border-2"
+            } ${isMilestone && !isBought ? "hover:shadow-[0_0_30px_rgba(139,92,246,0.4)] transition-all duration-300" : ""}`}
         >
-            <div className="absolute top-2 left-2 bg-base-300 px-2 py-1 rounded text-xs font-bold">
-                #{id}
-            </div>
-
-            {hasAnswer && (
-                <button
-                    className="absolute top-2 right-2 btn btn-xs btn-circle btn-ghost"
-                    onClick={onViewAnswer}
-                    title="View question and solution"
+            {/* Gradient border background for milestones */}
+            {isMilestone && !isBought && canBuy && (
+                <div
+                    className="absolute -inset-[2px] rounded-lg -z-10"
+                    style={{
+                        background: 'linear-gradient(45deg, #06b6d4, #8b5cf6, #f43f5e, #06b6d4)', // KEPT cyan-purple-pink
+                        padding: '2px',
+                    }}
                 >
-                    <BsEye className="text-lg" />
-                </button>
+                    <div className="w-full h-full bg-base-200 rounded-lg"></div>
+                </div>
             )}
 
-            <div className="card-body items-center text-center">
-                <h2 className="card-title">
-                    <MathText text={title} />
-                </h2>
-                <p>
-                    <MathText text={description} />
-                </p>
+            {/* Card content container */}
+            <div className="card w-50 sm:w-60 md:w-85 bg-base-200 rounded-lg relative z-0">
+                {/* ID Badge with special styling for milestones */}
+                <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-bold ${
+                    isMilestone
+                        ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-500 border border-blue-500/30"
+                        : "bg-base-300"
+                }`}>
+                    #{id}
+                </div>
 
-                <div className="card-actions justify-center mt-2">
-                    {isBought ? (
-                        <button className="btn btn-disabled bg-base-300 text-base-content">
-                            Purchased
-                        </button>
-                    ) : (
-                        <button
-                            className={`btn ${
-                                canBuy
-                                    ? "btn-success"
-                                    : "btn-disabled bg-base-300 text-base-content"
-                            }`}
-                            disabled={!canBuy}
-                            onClick={onBuy}
-                        >
-                            {cost === 0 ? "Buy (Free)" : `Buy (${cost} Points)`}
-                        </button>
-                    )}
+                {/* Eye button for viewing answer */}
+                {hasAnswer && (
+                    <button
+                        className="absolute top-2 right-2 btn btn-xs btn-circle btn-ghost z-10"
+                        onClick={onViewAnswer}
+                        title="View question and solution"
+                    >
+                        <BsEye className="text-lg" />
+                    </button>
+                )}
+
+                {/* Milestone badge */}
+                {isMilestone && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-20">
+                        <div className="bg-gradient-to-r from-blue-700 to-purple-700 text-white px-4 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                            <BsAward className="text-xs" />
+                            <span>MILESTONE</span>
+                        </div>
+                    </div>
+                )}
+
+                <div className="card-body items-center text-center pt-5">
+                    {/* Title */}
+                    <h2 className={`card-title ${isMilestone ? "bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent" : ""}`}>
+                        <MathText text={title} />
+                    </h2>
+                    <p>
+                        <MathText text={description} />
+                    </p>
+
+                    <div className="card-actions justify-center mt-2">
+                        {isBought ? (
+                            <button className={`btn btn-disabled ${
+                                isMilestone
+                                    ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-500 border border-blue-500/30 font-bold"
+                                    : "bg-base-300 text-base-content"
+                            }`}>
+                                {isMilestone ? "★ Purchased ★" : "Purchased"}
+                            </button>
+                        ) : (
+                            <button
+                                className={`btn ${
+                                    canBuy
+                                        ? isMilestone
+                                            ? "bg-gradient-to-r from-blue-700 to-purple-700 text-white border-0 font-bold hover:scale-105 transition-transform duration-200 shadow-md hover:shadow-lg hover:shadow-purple-500/30" // ADDED hover effects
+                                            : "btn-success"
+                                        : "btn-disabled bg-base-300 text-base-content"
+                                }`}
+                                disabled={!canBuy}
+                                onClick={onBuy}
+                            >
+                                {cost === 0 ? "Buy (Free)" : `Buy (${cost} Points)`}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </motion.div>

@@ -257,11 +257,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         },
         {
             id: "1",
-            title: "──⋆⋅ Constant Term ⋅⋆──",
+            title: "Constant Term",
             description: "Start generating points!\nUnlock degree 0 term: a₀ = 1.",
             cost: 0,
             prereqs: ["0"],
             question: "JK1",
+            isMilestone: true,
             onBuy: () => {
                 buyUpgrade("1", 0);
                 setVariables(v => ({ ...v, a0: 1 }));
@@ -293,11 +294,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         },
         {
             id: "4",
-            title: "──⋆⋅ Linear Term ⋅⋆──",
+            title: "Linear Term",
             description: "Unlock degree 1 term: a₁ × x, where a₁ = 1.",
             cost: 20,
             prereqs: ["3"],
             question: "JC1",
+            isMilestone: true,
             onBuy: () => {
                 buyUpgrade("4", 20);
                 setVariables(v => ({ ...v, a1: 1 }));
@@ -394,11 +396,12 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         },
         {
             id: "9",
-            title: "──⋆⋅ Quadratic Term ⋅⋆──",
+            title: "Quadratic Term",
             description: "Unlock degree 2 term: a₂ × x², where a₂ = 1.",
             cost: 1000,
             prereqs: ["8"],
             question: "JT1",
+            isMilestone: true,
             onBuy: () => {
                 buyUpgrade("9", 1000);
                 setVariables(v => ({ ...v, a2: 1 }));
@@ -432,6 +435,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                             onBuy={() => attemptBuy(u)}
                             onViewAnswer={() => viewAnswer(u.question)}
                             hasAnswer={u.question && solvedQuestions.includes(u.question)}
+                            isMilestone={u.isMilestone || false}
                         />
                     ))}
                 </div>
@@ -448,6 +452,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                         onBuy={() => attemptBuy(upg)}
                         onViewAnswer={() => viewAnswer(upg.question)}
                         hasAnswer={upg.question && solvedQuestions.includes(upg.question)}
+                        isMilestone={upg.isMilestone || false}
                     />
                 </div>
             );
