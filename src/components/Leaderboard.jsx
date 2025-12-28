@@ -1,40 +1,35 @@
 import { useState, useEffect } from "react";
-import { BsTrophy, BsArrowClockwise, BsDatabase, BsCloud } from "react-icons/bs";
+import { BsTrophy, BsArrowClockwise, BsCloud, BsDatabase } from "react-icons/bs";
 import { motion } from "framer-motion";
-import { supabase } from '../supabaseClient';
+import { getLeaderboardData } from '../supabaseClient';
 
 export default function Leaderboard({ currentPlayer, onClose, show }) {
     const [leaderboard, setLeaderboard] = useState([]);
-    const [loading, setLoading] = useState(false); // Changed to false initially
-    const [refreshing, setRefreshing] = useState(false); // New state for auto-refresh
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(null);
-    const [dataSource, setDataSource] = useState('supabase');
     const [error, setError] = useState(null);
+    const [dataSource, setDataSource] = useState('supabase');
+    const [refreshCount, setRefreshCount] = useState(0);
 
     const loadLeaderboard = async (isAutoRefresh = false) => {
         if (!isAutoRefresh) {
             setLoading(true);
+        } else {
+            setRefreshing(true);
         }
-        setRefreshing(true);
         setError(null);
 
         try {
-            console.log(`🔄 ${isAutoRefresh ? "Auto-refreshing" : "Fetching"} leaderboard from Supabase...`);
+            console.log(`🔄 ${isAutoRefresh ? "Auto-refreshing" : "Loading"} leaderboard...`);
 
-            const { data: players, error } = await supabase
-                .from('players')
-                .select('*')
-                .order('points', { ascending: false })
-                .limit(100);
+            const result = await getLeaderboardData();
 
-            if (error) {
-                console.error("❌ Supabase error:", error);
-                throw error;
+            if (!result.success) {
+                throw new Error(result.error || "Failed to load leaderboard");
             }
 
-            console.log(`✅ Loaded ${players?.length || 0} players from Supabase`);
-
-            const formattedPlayers = (players || []).map(player => ({
+            const formattedPlayers = (result.data || []).map(player => ({
                 name: player.username,
                 points: player.points || 0,
                 pointsPerSec: player.points_per_sec || 0,
@@ -46,12 +41,14 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
 
             setLeaderboard(formattedPlayers);
             setDataSource('supabase');
+            console.log(`✅ Loaded ${formattedPlayers.length} players`);
 
-        } catch (supabaseError) {
-            console.error("⚠️ Failed to load from Supabase:", supabaseError);
-            setError("Failed to load from server. Using local data...");
+        } catch (err) {
+            console.error("❌ Leaderboard error:", err);
+            setError(err.message);
+            setDataSource('error');
 
-            // Fallback to localStorage
+            // Fallback to localStorage if Supabase fails
             try {
                 const leaderboardData = JSON.parse(localStorage.getItem('polynomialUT_leaderboard') || '{}');
                 const players = Object.values(leaderboardData)
@@ -61,7 +58,7 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                 setLeaderboard(players);
                 setDataSource('local');
             } catch (localError) {
-                console.error("❌ Both sources failed:", localError);
+                console.error("❌ Local fallback also failed:", localError);
                 setLeaderboard([]);
             }
         } finally {
@@ -70,6 +67,7 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
             }
             setRefreshing(false);
             setLastUpdated(new Date());
+            setRefreshCount(prev => prev + 1);
         }
     };
 
@@ -80,18 +78,18 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
         }
     }, [show]);
 
-    // Auto-refresh every 3 seconds
+    // Auto-refresh every 3 seconds when open
     useEffect(() => {
         let intervalId;
         if (show) {
             intervalId = setInterval(() => {
-                loadLeaderboard(true); // Pass true for auto-refresh
-            }, 3000);
+                loadLeaderboard(true);
+            }, 3000); // Refresh every 3 seconds
         }
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [show]);
+    }, [show]); // Only depend on show, not loadLeaderboard
 
     const formatNumber = (num) => {
         const n = Math.floor(num);
@@ -102,7 +100,23 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
 
     const formatTime = (date) => {
         if (!date) return "";
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSec = Math.floor(diffMs / 1000);
+
+        if (diffSec < 5) return "Just now";
+        if (diffSec < 60) return `${diffSec}s ago`;
+
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    };
+
+    const formatTimeFull = (date) => {
+        if (!date) return "";
+        return date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
     };
 
     return (
@@ -133,18 +147,26 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                                             {dataSource === 'supabase' ? (
                                                 <>
                                                     <BsCloud className="text-info" />
-                                                    <span className="text-info">Live Server</span>
+                                                    <span className="text-info">Live Supabase</span>
+                                                </>
+                                            ) : dataSource === 'local' ? (
+                                                <>
+                                                    <BsDatabase className="text-warning" />
+                                                    <span className="text-warning">Local Storage</span>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <BsDatabase className="text-warning" />
-                                                    <span className="text-warning">Local Data</span>
+                                                    <BsCloud className="text-error" />
+                                                    <span className="text-error">Connection Error</span>
                                                 </>
                                             )}
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <div className={`w-2 h-2 rounded-full ${refreshing ? 'bg-green-500 animate-pulse' : 'bg-green-500'}`}></div>
-                                            <span className="text-green-600">Auto-refresh</span>
+                                            <span className="text-green-600">Auto-refresh (3s)</span>
+                                        </div>
+                                        <div className="text-xs text-base-content/50">
+                                            #{refreshCount}
                                         </div>
                                     </div>
                                 </div>
@@ -154,11 +176,10 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                                 <button
                                     onClick={() => loadLeaderboard(false)}
                                     className="btn btn-sm btn-ghost relative"
-                                    title="Refresh"
+                                    title="Refresh Now"
                                     disabled={loading || refreshing}
                                 >
-                                    <BsArrowClockwise className={`text-base ${refreshing ? 'animate-spin' : ''}`} />
-                                    {/* Subtle refresh indicator */}
+                                    <BsArrowClockwise className={`text-base ${refreshing || loading ? 'animate-spin' : ''}`} />
                                     {refreshing && (
                                         <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span>
                                     )}
@@ -175,20 +196,29 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                         <div className="mt-3 flex items-center justify-between text-xs">
                             <div className="text-base-content/60">
                                 {dataSource === 'supabase'
-                                    ? "Connected to cloud database • Updates every 3s"
-                                    : "Using local storage • Server connection failed"}
+                                    ? "Real-time updates • Auto-refreshes every 3 seconds"
+                                    : dataSource === 'local'
+                                        ? "Using local storage backup • Supabase connection failed"
+                                        : "Connection error • Try refreshing"}
                             </div>
                             {lastUpdated && (
                                 <div className="text-base-content/60 flex items-center gap-1">
                                     {refreshing ? (
                                         <>
                                             <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                                            <span>Updating...</span>
+                                            <span>Refreshing...</span>
+                                        </>
+                                    ) : loading ? (
+                                        <>
+                                            <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></div>
+                                            <span>Loading...</span>
                                         </>
                                     ) : (
                                         <>
                                             <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                                            <span>Updated: {formatTime(lastUpdated)}</span>
+                                            <span title={formatTimeFull(lastUpdated)}>
+                                                Updated: {formatTime(lastUpdated)}
+                                            </span>
                                         </>
                                     )}
                                 </div>
@@ -196,15 +226,30 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                         </div>
                     </div>
 
-                    {/* Content - Only show loading on initial load, not on auto-refresh */}
+                    {/* Content */}
                     <div className="p-6 overflow-auto" style={{ maxHeight: 'calc(85vh - 120px)' }}>
-                        {loading ? (
+                        {loading && !refreshing ? (
                             <div className="flex flex-col items-center justify-center py-12">
                                 <span className="loading loading-spinner loading-lg text-primary mb-4"></span>
                                 <p className="text-base-content/70">
                                     {dataSource === 'supabase'
-                                        ? "Connecting to global leaderboard..."
-                                        : "Loading local leaderboard..."}
+                                        ? "Connecting to Supabase database..."
+                                        : "Loading leaderboard..."}
+                                </p>
+                            </div>
+                        ) : error && dataSource === 'error' ? (
+                            <div className="text-center py-12">
+                                <div className="text-5xl mb-4 text-error">⚠️</div>
+                                <h3 className="text-xl font-semibold mb-2">Connection Error</h3>
+                                <p className="text-base-content/70 mb-4">{error}</p>
+                                <button
+                                    onClick={() => loadLeaderboard(false)}
+                                    className="btn btn-sm btn-primary"
+                                >
+                                    Try Again
+                                </button>
+                                <p className="text-xs text-base-content/50 mt-4">
+                                    Showing local storage data as fallback
                                 </p>
                             </div>
                         ) : leaderboard.length === 0 ? (
@@ -214,62 +259,93 @@ export default function Leaderboard({ currentPlayer, onClose, show }) {
                                 <p className="text-base-content/70 mb-6">
                                     Be the first to appear on the global leaderboard!
                                 </p>
+                                {dataSource === 'local' && (
+                                    <p className="text-xs text-warning">
+                                        ⚠️ Using local storage - Supabase connection unavailable
+                                    </p>
+                                )}
                             </div>
                         ) : (
-                            <div className="overflow-x-auto rounded-lg border border-base-300">
-                                {/*/!* Subtle refresh overlay *!/*/}
-                                {/*{refreshing && (*/}
-                                {/*    <div className="absolute inset-0 bg-base-200/50 backdrop-blur-[1px] flex items-center justify-center z-10">*/}
-                                {/*        <div className="flex items-center gap-2 bg-base-300/80 px-4 py-2 rounded-full shadow-lg">*/}
-                                {/*            <BsArrowClockwise className="animate-spin text-primary" />*/}
-                                {/*            <span className="text-sm font-medium">Refreshing data...</span>*/}
-                                {/*        </div>*/}
-                                {/*    </div>*/}
-                                {/*)}*/}
+                            <>
+                                {/* Data source indicator */}
+                                {dataSource === 'local' && (
+                                    <div className="alert alert-warning alert-sm mb-4">
+                                        <span className="text-xs">
+                                            ⚠️ Showing local backup data. Supabase connection unavailable.
+                                        </span>
+                                    </div>
+                                )}
 
-                                <table className="table w-full">
-                                    <thead className="bg-base-300">
-                                    <tr>
-                                        <th className="w-20 text-center">Rank</th>
-                                        <th>Player</th>
-                                        <th className="text-right">Points</th>
-                                        <th className="text-right">PPS</th>
-                                        <th className="text-right">Upgrades</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {leaderboard.map((player, index) => {
-                                        const isCurrentPlayer = player.name === currentPlayer;
-                                        return (
-                                            <tr
-                                                key={`${player.name}-${index}`}
-                                                className={`hover:bg-base-300/50 ${isCurrentPlayer ? '!bg-primary/10' : ''}`}
-                                            >
-                                                <td className="text-center font-bold">
-                                                    {index === 0 && "🥇"}
-                                                    {index === 1 && "🥈"}
-                                                    {index === 2 && "🥉"}
-                                                    {index > 2 && `#${index + 1}`}
-                                                </td>
-                                                <td>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-semibold">{player.name}</span>
-                                                        {isCurrentPlayer && (
-                                                            <span className="badge badge-primary badge-xs">YOU</span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="text-right">
-                                                    <div className="font-bold">{formatNumber(player.points)}</div>
-                                                </td>
-                                                <td className="text-right">{Math.floor(player.pointsPerSec)}</td>
-                                                <td className="text-right">{player.upgradeCount}</td>
-                                            </tr>
-                                        );
-                                    })}
-                                    </tbody>
-                                </table>
-                            </div>
+                                <div className="overflow-x-auto rounded-lg border border-base-300 relative">
+                                    <table className="table w-full">
+                                        <thead className="bg-base-300">
+                                        <tr>
+                                            <th className="w-20 text-center">Rank</th>
+                                            <th>Player</th>
+                                            <th className="text-right">Points</th>
+                                            <th className="text-right">PPS</th>
+                                            <th className="text-right">Upgrades</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {leaderboard.map((player, index) => {
+                                            const isCurrentPlayer = player.name === currentPlayer;
+                                            return (
+                                                <tr
+                                                    key={`${player.name}-${index}-${refreshCount}`}
+                                                    className={`hover:bg-base-300/50 transition-colors duration-200 ${
+                                                        isCurrentPlayer ? '!bg-primary/10 !border-l-4 !border-l-primary' : ''
+                                                    } ${refreshing ? 'opacity-90' : ''}`}
+                                                >
+                                                    <td className="text-center font-bold">
+                                                        {index === 0 && "🥇"}
+                                                        {index === 1 && "🥈"}
+                                                        {index === 2 && "🥉"}
+                                                        {index > 2 && `#${index + 1}`}
+                                                    </td>
+                                                    <td>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-semibold">{player.name}</span>
+                                                            {isCurrentPlayer && (
+                                                                <span className="badge badge-primary badge-xs animate-pulse">YOU</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-right">
+                                                        <div className="font-bold">{formatNumber(player.points)}</div>
+                                                    </td>
+                                                    <td className="text-right">{Math.floor(player.pointsPerSec)}</td>
+                                                    <td className="text-right">{player.upgradeCount}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                        </tbody>
+                                    </table>
+
+                                    {/* Bottom status bar */}
+                                    <div className="sticky bottom-0 bg-base-300/80 backdrop-blur-sm px-4 py-2 text-xs text-base-content/60 border-t border-base-300">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                Showing {leaderboard.length} player{leaderboard.length !== 1 ? 's' : ''}
+                                                {dataSource === 'supabase' && ' • Live updates'}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {refreshing ? (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="loading loading-spinner loading-xs"></span>
+                                                        Syncing...
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                                        Connected
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>

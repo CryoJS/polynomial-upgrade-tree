@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { BsCaretUpSquare, BsTrophy, BsBoxArrowRight, BsMusicNoteBeamed } from "react-icons/bs";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from './supabaseClient';
+import { supabase, saveUserData, verifyAdminPassword, loadUserData, forceSaveUser } from './supabaseClient';
 
 import { questionData } from "./questionData";
 import UpgradeBtn from "./components/UpgradeBtn.jsx";
@@ -44,71 +44,46 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
 
     const functionValue = calculateFunctionValue();
 
-    // Save player data function - FIXED with better calculation
+    // Save player data function
     const savePlayerData = useCallback(async () => {
+        if (!playerName || playerName === "Admin" || isAdmin) {
+            console.log("Admin account - not saving");
+            return;
+        }
+
+        console.log('🚀🚀🚀 ATTEMPTING SAVE for:', playerName);
+
         try {
-            // Don't save admin data
-            if (isAdmin || playerName === "Admin") {
-                console.log("Admin account - not saving");
-                return;
-            }
-
-            const playerData = {
-                username: playerName,
-                points: Math.floor(currency),
-                points_per_sec: functionValue,
-                upgrade_ids: boughtUpgrades,
-                upgrade_count: boughtUpgrades.length,
-                variables,
-                solved_questions: solvedQuestions,
-                last_updated: new Date().toISOString(),
-            };
-
-            console.log("🔄 Saving to Supabase:", playerData.username);
-
-            // Save to Supabase
-            const { data, error } = await supabase
-                .from('players')
-                .upsert(playerData, { onConflict: 'username' });
-
-            if (error) {
-                console.error("❌ Supabase save error:", error);
-                throw error;
-            }
-
-            console.log("✅ Saved to Supabase successfully!");
-
-            // ALSO save to localStorage as backup
-            const leaderboardData = JSON.parse(localStorage.getItem('polynomialUT_leaderboard') || '{}');
-            leaderboardData[playerName] = {
-                name: playerName,
-                points: Math.floor(currency),
+            // Try the normal save first
+            const result = await saveUserData(playerName, {
+                points: currency,
                 pointsPerSec: functionValue,
                 upgradeIds: boughtUpgrades,
-                upgradeCount: boughtUpgrades.length,
-                variables,
-                solvedQuestions,
-                lastUpdated: new Date().toISOString(),
-            };
-            localStorage.setItem('polynomialUT_leaderboard', JSON.stringify(leaderboardData));
+                variables: variables,
+                solvedQuestions: solvedQuestions
+            });
 
+            if (result.success) {
+                console.log('✅✅✅ SAVE SUCCESSFUL');
+            } else {
+                console.log('⚠️ Normal save failed, trying force save...');
+                // Try force save
+                const forceResult = await forceSaveUser(playerName, {
+                    points: currency,
+                    pointsPerSec: functionValue,
+                    upgradeIds: boughtUpgrades,
+                    variables: variables,
+                    solvedQuestions: solvedQuestions
+                });
+
+                if (forceResult.success) {
+                    console.log('✅✅✅ FORCE SAVE SUCCESSFUL');
+                } else {
+                    console.error('❌❌❌ BOTH SAVES FAILED');
+                }
+            }
         } catch (error) {
-            console.error("❌ Error saving to Supabase:", error);
-
-            // Fallback: save to localStorage only
-            const leaderboardData = JSON.parse(localStorage.getItem('polynomialUT_leaderboard') || '{}');
-            leaderboardData[playerName] = {
-                name: playerName,
-                points: Math.floor(currency),
-                pointsPerSec: functionValue,
-                upgradeIds: boughtUpgrades,
-                upgradeCount: boughtUpgrades.length,
-                variables,
-                solvedQuestions,
-                lastUpdated: new Date().toISOString(),
-            };
-            localStorage.setItem('polynomialUT_leaderboard', JSON.stringify(leaderboardData));
-            console.log("⚠️ Saved to localStorage as fallback");
+            console.error('❌❌❌ SAVE ERROR:', error.message);
         }
     }, [currency, functionValue, boughtUpgrades, variables, solvedQuestions, playerName, isAdmin]);
 
@@ -144,43 +119,37 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         };
     }, [savePlayerData, saveRef]);
 
-    // Auto-save every 5s - FIXED: Save immediately on mount and then every 5s
+    // Auto-save every 5s
     useEffect(() => {
-        // Save immediately on component mount
+        if (playerName === "Admin" || isAdmin) return;
+
         savePlayerData();
 
-        // Then set up interval
         const interval = setInterval(() => {
             savePlayerData();
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [savePlayerData]);
+    }, [savePlayerData, playerName, isAdmin]);
 
-    // Update points every second AND save more frequently
+    // Update points every second
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrency(c => {
                 const newCurrency = c + functionValue;
-
-                // Save every 10 point increments or every 5 seconds (whichever comes first)
-                if (Math.floor(newCurrency) % 10 === 0) {
-                    setTimeout(() => savePlayerData(), 100);
-                }
-
                 return newCurrency;
             });
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [functionValue, savePlayerData]);
+    }, [functionValue]);
 
     // Save when ANY important data changes
     useEffect(() => {
         if (!isAdmin && playerName !== "Admin") {
             const timer = setTimeout(() => {
                 savePlayerData();
-            }, 1000); // Debounce save by 1 second
+            }, 1000);
             return () => clearTimeout(timer);
         }
     }, [boughtUpgrades, variables, solvedQuestions, savePlayerData, isAdmin, playerName]);
@@ -199,7 +168,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     const { error } = await supabase
                         .from('players')
                         .delete()
-                        .neq('username', 'Admin'); // Keep Admin account if it exists
+                        .neq('username', 'Admin');
 
                     if (error) {
                         console.error("❌ Error deleting from Supabase:", error);
@@ -207,11 +176,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     }
 
                     console.log("✅ All player data deleted from Supabase");
-
-                    // Also clear local storage
                     localStorage.removeItem('polynomialUT_leaderboard');
-                    console.log("✅ Local storage cleared");
-
                     showNotification("Leaderboard reset successfully! All player data deleted.", "success");
                     setConfirmDialog(null);
 
@@ -233,10 +198,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     function buyUpgrade(id, cost) {
         setCurrency(c => c - cost);
         setBoughtUpgrades(u => [...u, id]);
-        // Play success sound
         playSoundEffect('purchase-success');
-
-        // Save immediately after buying upgrade
         setTimeout(() => savePlayerData(), 500);
     }
 
@@ -262,7 +224,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
     }
 
     function handleQuestionSuccess() {
-        playSoundEffect('purchase-success'); // Play success sound for correct answer
+        playSoundEffect('purchase-success');
         if (pendingUpgrade && pendingUpgrade.question) {
             setSolvedQuestions(prev => [...prev, pendingUpgrade.question]);
         }
@@ -271,13 +233,11 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
         }
         setActivePopup(null);
         setPendingUpgrade(null);
-
-        // Save after completing question
         setTimeout(() => savePlayerData(), 500);
     }
 
     function handleQuestionFail() {
-        playSoundEffect('purchase-fail'); // Play fail sound for wrong answer
+        playSoundEffect('purchase-fail');
         setActivePopup(null);
         setPendingUpgrade(null);
     }
@@ -734,7 +694,7 @@ export default function App() {
 
     const saveRef = useRef(null);
 
-    const handleLogin = async (name, admin = false) => {
+    const handleLogin = async (name, admin = false, userData = null) => {
         setIsAdmin(admin);
 
         if (admin) {
@@ -748,32 +708,17 @@ export default function App() {
             return;
         }
 
-        try {
-            // Try to load from Supabase first
-            const { data, error } = await supabase
-                .from('players')
-                .select('*')
-                .eq('username', name)
-                .single();
-
-            if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
-                throw error;
-            }
-
-            if (data) {
-                // Found in Supabase
-                const savedData = {
-                    points: data.points || 0,
-                    upgradeIds: data.upgrade_ids || [],
-                    variables: data.variables || { x: 1, a0: 0, a1: 0, a2: 0 },
-                    solvedQuestions: data.solved_questions || []
-                };
-
+        if (userData) {
+            setPlayerName(name);
+            setSavedPlayerData(userData);
+        } else {
+            // Fallback - load from Supabase
+            const { success, data } = await loadUserData(name);
+            if (success) {
                 setPlayerName(name);
-                setSavedPlayerData(savedData);
-                console.log("✅ Loaded from Supabase");
+                setSavedPlayerData(data);
             } else {
-                // New player
+                // New user with defaults
                 setPlayerName(name);
                 setSavedPlayerData({
                     points: 0,
@@ -781,19 +726,7 @@ export default function App() {
                     variables: { x: 1, a0: 0, a1: 0, a2: 0 },
                     solvedQuestions: []
                 });
-                console.log("👋 New player - starting fresh");
             }
-
-        } catch (error) {
-            console.error("❌ Error loading from Supabase:", error);
-
-            // Fallback to localStorage
-            const leaderboardData = JSON.parse(localStorage.getItem('polynomialUT_leaderboard') || '{}');
-            const savedData = leaderboardData[name] || null;
-
-            setPlayerName(name);
-            setSavedPlayerData(savedData);
-            console.log("⚠️ Loaded from localStorage (fallback)");
         }
     };
 
