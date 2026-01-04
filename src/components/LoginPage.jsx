@@ -91,7 +91,7 @@ export default function LoginPage({ onLogin }) {
                         points: 0,
                         pointsPerSec: 0,
                         upgradeIds: [],
-                        variables: { x: 1, a0: 0, a1: 0, a2: 0 },
+                        variables: { x: 1, a0: 0, a1: 0, a2: 0, a3: 0, a4: 0, a5: 0, a6: 0, a7: 0 },
                         solvedQuestions: []
                     }, password);
 
@@ -100,7 +100,7 @@ export default function LoginPage({ onLogin }) {
                         onLogin(trimmedName, false, {
                             points: 0,
                             upgradeIds: [],
-                            variables: { x: 1, a0: 0, a1: 0, a2: 0 },
+                            variables: { x: 1, a0: 0, a1: 0, a2: 0, a3: 0, a4: 0, a5: 0, a6: 0, a7: 0 },
                             solvedQuestions: []
                         });
                     } else {
