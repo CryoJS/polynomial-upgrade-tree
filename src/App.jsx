@@ -567,6 +567,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             description: "Increases a₀'s value by 80.",
             cost: 30000,
             prereqs: ["14"],
+            rowGroup: 15,
             question: "RC1",
             onBuy: () => {
                 buyUpgrade("15.1", 30000);
@@ -579,6 +580,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
             description: "Multiplies a₂'s value by 3.33.",
             cost: 30000,
             prereqs: ["14"],
+            rowGroup: 15,
             question: "RK4",
             onBuy: () => {
                 buyUpgrade("15.2", 30000);
