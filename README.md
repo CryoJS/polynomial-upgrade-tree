@@ -1,5 +1,5 @@
 # Polynomial Upgrade Tree
-Learn basic polynomials through an incremental game.
+Learn polynomial functions through an incremental game.
 
 ## Usage
 - This website is meant to be a group/class activity, held by an organizer.
