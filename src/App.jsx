@@ -975,7 +975,7 @@ function GamePage({ playerName, onLogout, isAdmin, savedPlayerData, saveRef }) {
                     <span className="hidden sm:inline md:hidden">Poly<span className="text-base text-base-content"> UT</span></span>
 
                     {/* Username Display */}
-                    <div className="badge bg-base-content text-base-100 font-semibold hidden md:inline-flex ml-2">
+                    <div className="badge bg-base-content text-base-100 font-semibold hidden md:inline-flex px-3 ml-1">
                         {playerName}
                     </div>
                     <div className="badge bg-base-content text-base-100 font-semibold md:hidden ml-2">
