@@ -8,9 +8,11 @@ import JT2Image from "./pictureSolutions/JT2.png";
 
 import MA1Image from "./pictureSolutions/MA1.png";
 import MA2Image from "./pictureSolutions/MA2.png";
-// import MA3Image from "./pictureSolutions/MA3.png"; // WIP
+import MA3Image from "./pictureSolutions/MA3.jpg";
+import MC1Image from "./pictureSolutions/MC1.png";
+import MC2Image from "./pictureSolutions/MC2.png";
 import MT1Image from "./pictureSolutions/MT1.png";
-// import MT2Image from "./pictureSolutions/MT2.png"; // WIP
+import MT2Image from "./pictureSolutions/MT2.png";
 
 import RK3Image from "./pictureSolutions/RK3.png";
 import RA1Image from "./pictureSolutions/RA1.png";
@@ -212,7 +214,7 @@ export const questionData = {
         category: "Application",
         correct: "9064",
         type: "code",
-        solution: "Third differences are constant and non-zero, so the degree of the polynomial is 3. The answer is $f(x) = 4x^3 + 3x^2 - 5x + 13$.",
+        solution: MA3Image,
     },
 
     "MC1": {
@@ -220,7 +222,7 @@ export const questionData = {
         category: "Communication",
         correct: "428",
         type: "code",
-        solution: "All polynomials have a domain of all real numbers, due to the lack of holes, roots, logs, or any other factors that will impact their domain. Since a polynomial is defined as having powers of $x$ which are whole numbers, otherwise defined as greater than or equal to 0, all $x$ values will have real outputs.",
+        solution: MC1Image,
     },
 
     "MC2": {
@@ -228,7 +230,7 @@ export const questionData = {
         category: "Communication",
         correct: "9371",
         type: "code",
-        solution: "$n$ is equal to the maximum number of $x$-intercepts, while $n - 1$ is equal to the maximum number of turning points. This relation can be seen when starting to graph simple polynomials. The x-intercepts work, as there can be no more than $n$. For example, a degree 5 polynomial in factored form could be $x^5 = (x)(x)(x)(x)(x)$. No more x terms than this can exist for a degree of 5. For turning points, the maximum is $n-1$. The exception to the x-intercept rule is $y = 0$, a constant polynomial, which has an infinite number of x-intercepts. Mathematicians define its degree as undefined.",
+        solution: MC2Image,
     },
 
     "MT1": {
@@ -244,7 +246,7 @@ export const questionData = {
         category: "Thinking",
         correct: "9042",
         type: "code",
-        solution: "There are 2 possibilities:\n$f(x) = \\frac{1}{4}(x+3)(x-2)^2(x-4)^2$\n$f(x) = -\\frac{1}{3}(x+3)^2(x-2)^2(x-4)$",
+        solution: MT2Image,
     },
 
     "RK1": {
